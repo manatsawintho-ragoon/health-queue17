@@ -33,7 +33,7 @@ export default function Carousel() {
     setCurrent((prev) => (prev === slides.length - 1 ? 0 : prev + 1));
   };
 
-  // ✅ Auto Slide ทุก 7 วินาที
+  //  Auto Slide ทุก 7 วินาที
   useEffect(() => {
     const timer = setInterval(() => {
       nextSlide();
@@ -41,7 +41,7 @@ export default function Carousel() {
     return () => clearInterval(timer);
   }, [current]);
 
-  // ✅ Drag / Swipe ซ้ายขวา
+  //  Drag / Swipe ซ้ายขวา
   useEffect(() => {
     const slider = slideRef.current;
     let startX = 0;
