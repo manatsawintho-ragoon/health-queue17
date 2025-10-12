@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+	<title>ติดต่อ</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+	<link href='https://fonts.googleapis.com/css?family=Roboto:400,100,300,700' rel='stylesheet' type='text/css'>
+
+	<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+
+	<link rel="stylesheet" href="css/style.css">
+
+</head>
+
+<body>
+	<section class="page-hero">
+		<div class="container">
+			<!-- breadcrumb mini (ถ้าไม่ใช้ ลบได้) -->
+			<div class="breadcrumb-mini">
+				<i class="fa fa-home"></i> เกี่ยวกับเรา <span>›</span> ติดต่อเรา
+			</div>
+
+			<h1 class="page-title">ติดต่อเรา</h1>
+			<div class="page-underline"></div>
+
+			<div class="row contact-quick mt-4 justify-content-center">
+				<div class="col-12 col-sm-6 col-lg-4 mb-3">
+					<a class="quick-card" href="#">
+						<span class="q-icon"><i class="fa fa-comments"></i></span>
+						<span class="q-title">ข้อเสนอแนะ</span>
+					</a>
+				</div>
+				<div class="col-12 col-sm-6 col-lg-4 mb-3">
+					<a class="quick-card" href="#contactForm">
+						<span class="q-icon"><i class="fa fa-id-card"></i></span>
+						<span class="q-title">ข้อมูลสำหรับติดต่อ</span>
+					</a>
+				</div>
+				<div class="col-12 col-sm-6 col-lg-4 mb-3">
+					<a class="quick-card" href="#">
+						<span class="q-icon"><i class="fa fa-commenting"></i></span>
+						<span class="q-title">ติดตามเรา</span>
+					</a>
+				</div>
+			</div>
+
+
+			<div class="row justify-content-center">
+				<div class="col-md-12">
+					<div class="wrapper">
+						<!-- แถวฟอร์ม + แผนที่ -->
+						<div class="row no-gutters align-items-stretch mb-5 contact-panel">
+							<!-- ซ้าย: ฟอร์ม -->
+							<div class="col-md-7">
+								<div class="contact-wrap w-100 p-md-5 p-4 h-100">
+									<h3 class="heading-section">ติดต่อ เรา</h3>
+									<div id="form-message-warning" class="mb-4"></div>
+									<div id="form-message-success" class="mb-4">✅ “ข้อความของคุณถูกส่งแล้ว</div>
+
+									<form method="POST" id="contactForm" name="contactForm" class="contactForm">
+										<div class="form-row">
+											<div class="col-md-6">
+												<div class="form-group">
+													<label class="label" for="name">ชื่อ-นามสกุล</label>
+													<input type="text" class="form-control" name="name" id="name"
+														placeholder="Name">
+												</div>
+											</div>
+											<div class="col-md-6">
+												<div class="form-group">
+													<label class="label" for="email">อีเมล</label>
+													<input type="email" class="form-control" name="email" id="email"
+														placeholder="Email" required
+														pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$">
+												</div>
+											</div>
+										</div>
+
+										<div class="form-group">
+											<label class="label" for="subject">หัวข้อ</label>
+											<input type="text" class="form-control" name="subject" id="subject"
+												placeholder="Subject">
+										</div>
+
+										<div class="form-group">
+											<label class="label" for="message">รายละเอียด</label>
+											<textarea name="message" class="form-control" id="message" rows="4"
+												placeholder="Message"></textarea>
+										</div>
+
+										<div class="form-group mb-0">
+											<input type="submit" value="Send Message" class="btn btn-primary">
+											<div class="submitting"></div>
+										</div>
+									</form>
+								</div>
+							</div>
+
+							<!-- ขวา: แผนที่ -->
+							<div class="col-md-5 d-flex">
+								<div class="map-wrap w-100 h-100">
+									<iframe class="w-100 h-100 border-0"
+										src="https://www.google.com/maps/embed?pb=!1m16!1m12!1m3!1d3722.4153421496876!2d100.58303727490936!3d13.855056736547633!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!2m1!1z4Lih4Lir4Liy4Lin4Li04LiX4Lii4Liy4Lil4Lix4Lii4Lio4Lij4Li14Lib4LiX4Li44LihIFNQVQ!5e1!3m2!1sth!2sth!4v1760302600074!5m2!1sth!2sth"
+										loading="lazy" allowfullscreen
+										referrerpolicy="no-referrer-when-downgrade"></iframe>
+								</div>
+							</div>
+						</div>
+
+						<!-- แถวไอคอนที่อยู่ล่าง (ของเดิมคุณ) -->
+						<div class="row contact-icons">
+							<!-- … four .col-md-3 dbox เดิมของคุณ … -->
+						</div>
+					</div>
+
+
+
+				</div>
+			</div>
+			<div class="row">
+				<div class="col-md-3">
+					<div class="dbox w-100 text-center">
+						<div class="icon d-flex align-items-center justify-content-center">
+							<span class="fa fa-map-marker"></span>
+						</div>
+						<div class="text">
+							<p><span>Address:</span> SRIPATUM UNIVERSITY : มหาวิทยาลัยศรีปทุม 2410/2 ถ.พหลโยธิน
+								เขตจตุจักร กรุงเทพมหานคร 10900.</p>
+						</div>
+					</div>
+				</div>
+				<div class="col-md-3">
+					<div class="dbox w-100 text-center">
+						<div class="icon d-flex align-items-center justify-content-center">
+							<span class="fa fa-phone"></span>
+						</div>
+						<div class="text">
+							<p><span>Phone:</span> <a href="tel://1234567920">0 2561 1721</a></p>
+						</div>
+					</div>
+				</div>
+				<div class="col-md-3">
+					<div class="dbox w-100 text-center">
+						<div class="icon d-flex align-items-center justify-content-center">
+							<span class="fa fa-paper-plane"></span>
+						</div>
+						<div class="text">
+							<p><span>Email:</span> <a href="mailto:info@yoursite.com">admissions@spu.ac.th</a>
+							</p>
+						</div>
+					</div>
+				</div>
+				<div class="col-md-3">
+					<div class="dbox w-100 text-center">
+						<div class="icon d-flex align-items-center justify-content-center">
+							<span class="fa fa-globe"></span>
+						</div>
+						<div class="text">
+							<p><span>Website</span> <a href="#">-------</a></p>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		</div>
+		</div>
+		</div>
+	</section>
+
+	<!-- Core libs -->
+	<script src="js/jquery.min.js"></script>
+	<script src="js/popper.js"></script>
+	<script src="js/bootstrap.min.js"></script>
+
+	<!-- Validate -->
+	<script src="js/jquery.validate.min.js"></script>
+
+	<!-- สคริปต์ของคุณ (ฟอร์ม) -->
+	<script src="js/main.js"></script>
+
+
+
+
+
+</body>
+
+</html>
