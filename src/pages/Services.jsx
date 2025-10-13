@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { auth } from "../firebaseConfig";
+import Swal from "sweetalert2";
 import MainLayout from "../layouts/MainLayout";
 import service1 from "../assets/medical-carousel-1.jpg";
 import service2 from "../assets/medical-carousel-2.jpg";
@@ -8,8 +10,6 @@ import service3 from "../assets/medical-carousel-3.jpg";
 export default function Services() {
   const [selectedService, setSelectedService] = useState(null);
   const navigate = useNavigate();
-
-  const isLoggedIn = localStorage.getItem("isLoggedIn") === "true"; // ตรวจสอบสถานะล็อกอินจำลอง
 
   const services = [
     {
@@ -59,23 +59,55 @@ export default function Services() {
     },
   ];
 
+  // ✅ เช็กสถานะล็อกอินจริงจาก Firebase
   const handleBook = (serviceTitle) => {
-    if (!isLoggedIn) {
-      alert("กรุณาเข้าสู่ระบบก่อนทำการจองบริการ");
-      navigate("/login");
-    } else {
-      alert(`ขอบคุณที่เลือกบริการ: ${serviceTitle}`);
+    const user = auth.currentUser;
+
+    if (!user) {
+      Swal.fire({
+        icon: "warning",
+        title: "กรุณาเข้าสู่ระบบก่อน",
+        text: "เพื่อทำการจองบริการ กรุณาเข้าสู่ระบบก่อนค่ะ",
+        confirmButtonColor: "#006680",
+        confirmButtonText: "เข้าสู่ระบบ",
+        showCancelButton: true,
+        cancelButtonText: "ยกเลิก",
+      }).then((result) => {
+        if (result.isConfirmed) {
+          navigate("/login");
+        }
+      });
+      return;
     }
+
+    // ✅ ถ้าล็อกอินแล้ว
+    Swal.fire({
+      icon: "success",
+      title: "จองบริการสำเร็จ!",
+      text: `คุณได้เลือกบริการ: ${serviceTitle}`,
+      confirmButtonColor: "#006680",
+    });
   };
 
   return (
     <MainLayout>
       {/* Header */}
-      <section className="relative bg-[#006680] text-white py-20 text-center">
-        <h1 className="text-4xl font-bold mb-3 tracking-wide">บริการของเรา</h1>
-        <p className="text-lg text-gray-200">
-          เราพร้อมดูแลสุขภาพของคุณด้วยบริการทางการแพทย์ครบวงจร
-        </p>
+      <section
+        className="relative bg-cover bg-center bg-no-repeat text-white py-20 text-center"
+        style={{
+          backgroundImage: `url(${service1})`,
+        }}
+      >
+        <div className="absolute inset-0 bg-[#004f5e]/70 backdrop-brightness-75"></div>
+        {/* overlay สีดำโปร่ง */}
+        <div className="relative z-10">
+          <h1 className="text-4xl font-bold mb-3 tracking-wide drop-shadow-lg">
+            บริการของเรา
+          </h1>
+          <p className="text-lg text-gray-200 drop-shadow-md">
+            เราพร้อมดูแลสุขภาพของคุณด้วยบริการทางการแพทย์ครบวงจร
+          </p>
+        </div>
       </section>
 
       {/* Service List */}
@@ -117,13 +149,12 @@ export default function Services() {
       {selectedService && (
         <div
           className="fixed inset-0 bg-black/50 flex justify-center items-center z-50"
-          onClick={() => setSelectedService(null)} // คลิกพื้นที่นอก popup ปิดได้
+          onClick={() => setSelectedService(null)}
         >
           <div
             className="bg-white rounded-3xl shadow-2xl max-w-lg w-full mx-4 p-8 relative"
-            onClick={(e) => e.stopPropagation()} // ป้องกันคลิกภายใน popup แล้วปิด
+            onClick={(e) => e.stopPropagation()}
           >
-            {/* ปุ่มปิด */}
             <button
               onClick={() => setSelectedService(null)}
               className="absolute top-3 right-4 text-gray-500 hover:text-[#006680] text-4xl leading-none font-bold cursor-pointer transition"
@@ -131,7 +162,6 @@ export default function Services() {
               &times;
             </button>
 
-            {/* เนื้อหา */}
             <img
               src={selectedService.image}
               alt={selectedService.title}
@@ -144,12 +174,10 @@ export default function Services() {
               {selectedService.detail}
             </p>
 
-            {/* ราคา */}
             <div className="bg-[#b5e7f3c7] text-[#006680] text-center py-3 rounded-xl font-semibold text-xl mb-6 shadow-inner">
-               ค่าบริการเริ่มต้น: {selectedService.price}
+              ค่าบริการเริ่มต้น: {selectedService.price}
             </div>
 
-            {/* ปุ่มจอง */}
             <button
               onClick={() => handleBook(selectedService.title)}
               className="bg-[#006680] hover:bg-[#0289a7] text-white font-semibold px-8 py-3 rounded-full cursor-pointer transition w-full shadow-md"

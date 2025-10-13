@@ -13,6 +13,7 @@ import Doctor_team from "./pages/Doctor_team.jsx";
 import News from "./pages/News.jsx";
 import Contact from "./pages/Contact.jsx";
 import Login from "./pages/Login.jsx";
+import Profile from "./pages/Profile.jsx";
 // -----------
 
 createRoot(document.getElementById("root")).render(
@@ -28,6 +29,9 @@ createRoot(document.getElementById("root")).render(
         <Route path="/news" element={<News />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/login" element={<Login />} />
+
+        {/* Profile */}
+        <Route path="/profile" element={<Profile />} />
 
 
       </Routes>
