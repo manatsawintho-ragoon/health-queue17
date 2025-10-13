@@ -9,7 +9,7 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="bg-[#006680] text-white shadow">
+    <nav className="bg-[#006680] text-white shadow sticky top-0 z-50">
       {/* แถวบน */}
       <div className="flex items-center justify-between px-6 py-5 relative">
         {/* โลโก้อยู่ตรงกลาง */}

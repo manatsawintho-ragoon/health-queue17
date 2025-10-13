@@ -1,23 +1,33 @@
 import React, { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
+
+// picture for use 
+import images1 from "../assets/medical-carousel-1.jpg";
+import images2 from "../assets/medical-carousel-2.jpg";
+import images3 from "../assets/medical-carousel-3.jpg";
+
 
 const slides = [
   {
-    image: "https://images.unsplash.com/photo-1505751172876-fa1923c5c528",
+    image: images1,
     title: "บริการทางการแพทย์ครบวงจร",
     desc: "เรามีทีมแพทย์เฉพาะทางพร้อมให้บริการตรวจ วินิจฉัย และรักษาอย่างมืออาชีพ",
     button: "ดูรายละเอียด",
+    link: "/services", 
   },
   {
-    image: "https://images.unsplash.com/photo-1579154204601-01588f351e67",
+    image: images2,
     title: "เทคโนโลยีทางการแพทย์ทันสมัย",
     desc: "ศิริราชโซลูชันพร้อมเครื่องมือแพทย์มาตรฐานสากลเพื่อการดูแลที่แม่นยำ",
     button: "เรียนรู้เพิ่มเติม",
+    link: "/about", 
   },
   {
-    image: "https://images.unsplash.com/photo-1504814532849-927661016c3a",
+    image: images3,
     title: "การดูแลด้วยหัวใจ",
     desc: "เพราะผู้ป่วยทุกคนคือคนสำคัญ เราพร้อมมอบบริการด้วยความอบอุ่นและใส่ใจ",
     button: "ติดต่อเรา",
+    link: "/contact",
   },
 ];
 
@@ -33,7 +43,7 @@ export default function Carousel() {
     setCurrent((prev) => (prev === slides.length - 1 ? 0 : prev + 1));
   };
 
-  //  Auto Slide ทุก 7 วินาที
+  // Auto Slide ทุก 7 วินาที
   useEffect(() => {
     const timer = setInterval(() => {
       nextSlide();
@@ -41,7 +51,7 @@ export default function Carousel() {
     return () => clearInterval(timer);
   }, [current]);
 
-  //  Drag / Swipe ซ้ายขวา
+  // Drag / Swipe ซ้ายขวา
   useEffect(() => {
     const slider = slideRef.current;
     let startX = 0;
@@ -89,7 +99,7 @@ export default function Carousel() {
           />
 
           {/* overlay สีดำ */}
-          <div className="absolute inset-0 bg-black bg-opacity-40 z-10"></div>
+          {/* <div className="absolute inset-0 bg-black bg-opacity-40 z-10"></div> */}
 
           {/* ข้อความลอย */}
           <div className="absolute top-1/2 left-40 transform -translate-y-1/2 text-white max-w-md text-left z-20">
@@ -97,12 +107,14 @@ export default function Carousel() {
               {slide.title}
             </h2>
             <p className="text-lg mb-6 drop-shadow-md">{slide.desc}</p>
-            <button
-              className="bg-[#0289a7] hover:bg-[#03a9c5] cursor-pointer px-7 py-3 rounded-full text-base font-semibold shadow z-30 relative
-                         transform transition-transform duration-300 hover:scale-105 hover:shadow-lg"
+
+            {/* ✅ ปุ่มลิงก์ */}
+            <Link
+              to={slide.link}
+              className="bg-[#0289a7] hover:bg-[#03a9c5] cursor-pointer px-7 py-3 rounded-full text-base font-semibold shadow z-30 relative transform transition-transform duration-300 hover:scale-105 hover:shadow-lg"
             >
               {slide.button}
-            </button>
+            </Link>
           </div>
         </div>
       ))}

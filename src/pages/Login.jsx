@@ -1,11 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, forwardRef } from "react";
 import Swal from "sweetalert2";
 import { useNavigate } from "react-router-dom";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
-import { registerLocale } from "react-datepicker";
+import DatePicker, { registerLocale } from "react-datepicker";
 import th from "date-fns/locale/th";
 import MainLayout from "../layouts/MainLayout";
+import "react-datepicker/dist/react-datepicker.css";
+
 registerLocale("th", th);
 
 export default function Login() {
@@ -18,6 +18,27 @@ export default function Login() {
     password: "",
     confirmPassword: "",
   });
+
+  // ฟังก์ชันเลือกภาษาไทยและแสดงปี พ.ศ.
+  const formatDateToThai = (date) => {
+    if (!date) return "";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear() + 543;
+    return `${day}/${month}/${year}`;
+  };
+
+  // custom input ให้ช่อง input แสดง พ.ศ.
+  const CustomInput = forwardRef(({ value, onClick }, ref) => (
+    <input
+      readOnly
+      ref={ref}
+      onClick={onClick}
+      value={formatDateToThai(value ? new Date(value) : null)}
+      placeholder="เลือกวันเดือนปีเกิด"
+      className="border border-gray-300 rounded-lg px-4 py-3 text-base w-full focus:ring-2 focus:ring-[#006680] focus:border-[#006680] outline-none bg-[#f9fdff] cursor-pointer"
+    />
+  ));
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -36,7 +57,7 @@ export default function Login() {
       ) {
         Swal.fire({
           icon: "warning",
-          title: "ข้อมูลไม่ครบ!",
+          title: "ข้อมูลไม่ครบ",
           text: "กรุณากรอกข้อมูลให้ครบทุกช่อง",
           confirmButtonColor: "#006680",
         });
@@ -46,7 +67,7 @@ export default function Login() {
       if (!/^\d{13}$/.test(formData.citizenId)) {
         Swal.fire({
           icon: "error",
-          title: "หมายเลขบัตรไม่ถูกต้อง!",
+          title: "หมายเลขบัตรไม่ถูกต้อง",
           text: "กรุณากรอกหมายเลขบัตรประชาชนให้ครบ 13 หลัก",
           confirmButtonColor: "#006680",
         });
@@ -56,7 +77,7 @@ export default function Login() {
       if (formData.password !== formData.confirmPassword) {
         Swal.fire({
           icon: "error",
-          title: "รหัสผ่านไม่ตรงกัน!",
+          title: "รหัสผ่านไม่ตรงกัน",
           text: "กรุณายืนยันรหัสผ่านให้ตรงกัน",
           confirmButtonColor: "#006680",
         });
@@ -65,7 +86,7 @@ export default function Login() {
 
       Swal.fire({
         icon: "success",
-        title: "สมัครสมาชิกสำเร็จ!",
+        title: "สมัครสมาชิกสำเร็จ",
         text: "คุณสามารถเข้าสู่ระบบได้แล้ว",
         confirmButtonColor: "#006680",
       }).then(() => setIsRegister(false));
@@ -73,7 +94,7 @@ export default function Login() {
       if (!formData.email || !formData.password) {
         Swal.fire({
           icon: "warning",
-          title: "ข้อมูลไม่ครบ!",
+          title: "ข้อมูลไม่ครบ",
           text: "กรุณากรอกอีเมลและรหัสผ่าน",
           confirmButtonColor: "#006680",
         });
@@ -82,7 +103,7 @@ export default function Login() {
 
       Swal.fire({
         icon: "success",
-        title: "เข้าสู่ระบบสำเร็จ!",
+        title: "เข้าสู่ระบบสำเร็จ",
         text: `ยินดีต้อนรับ, ${formData.email}`,
         confirmButtonColor: "#006680",
       }).then(() => navigate("/"));
@@ -91,27 +112,22 @@ export default function Login() {
 
   return (
     <MainLayout>
-      <div className="min-h-screen flex items-center justify-center bg-[#026777]">
-        <div className="bg-white/95 rounded-3xl shadow-2xl w-full max-w-md p-8 md:p-10 border border-[#b7dfe6] backdrop-blur-md">
+      <div className="min-h-[calc(100vh-120px)] flex items-center justify-center bg-[#006680]">
+        <div className="bg-white/95 rounded-3xl shadow-2xl w-full max-w-md p-8 md:p-10 border border-[#b7dfe6]">
           <h1 className="text-3xl font-extrabold text-[#006680] text-center mb-2 tracking-wide">
             WHOCARE HOSPITAL
           </h1>
           <p className="text-gray-600 text-center mb-8">
-            {isRegister
-              ? "สมัครสมาชิกเพื่อเริ่มต้นใช้งาน"
-              : "เข้าสู่ระบบเพื่อใช้งาน"}
+            {isRegister ? "สมัครสมาชิกเพื่อเริ่มต้นใช้งาน" : "เข้าสู่ระบบเพื่อใช้งาน"}
           </p>
 
-          <form
-            onSubmit={handleSubmit}
-            className="flex flex-col gap-5 text-left"
-          >
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5 text-left">
             {isRegister && (
               <>
                 {/* หมายเลขบัตร */}
                 <div>
                   <label className="text-gray-800 font-semibold mb-1 block text-sm">
-                    หมายเลขบัตรประชาชน
+                    หมายเลขบัตรประชาชน 13 หลัก
                   </label>
                   <input
                     type="text"
@@ -140,7 +156,66 @@ export default function Login() {
                     showMonthDropdown
                     showYearDropdown
                     dropdownMode="select"
-                    className="border border-gray-300 rounded-lg px-4 py-3 text-base w-full focus:ring-2 focus:ring-[#006680] focus:border-[#006680] outline-none bg-[#f9fdff] cursor-pointer"
+                    renderCustomHeader={({
+                      date,
+                      changeYear,
+                      changeMonth,
+                      decreaseMonth,
+                      increaseMonth,
+                    }) => (
+                      <div className="flex justify-between items-center px-2 py-1">
+                        <button onClick={decreaseMonth} type="button">
+                          {"<"}
+                        </button>
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={date.getFullYear()}
+                            onChange={({ target: { value } }) => changeYear(value)}
+                            className="border rounded px-1 py-0.5 text-sm"
+                          >
+                            {Array.from({ length: 100 }, (_, i) => {
+                              const year = new Date().getFullYear() - i;
+                              return (
+                                <option key={year} value={year}>
+                                  {year + 543}
+                                </option>
+                              );
+                            })}
+                          </select>
+
+                          <select
+                            value={date.getMonth()}
+                            onChange={({ target: { value } }) =>
+                              changeMonth(value)
+                            }
+                            className="border rounded px-1 py-0.5 text-sm"
+                          >
+                            {[
+                              "ม.ค.",
+                              "ก.พ.",
+                              "มี.ค.",
+                              "เม.ย.",
+                              "พ.ค.",
+                              "มิ.ย.",
+                              "ก.ค.",
+                              "ส.ค.",
+                              "ก.ย.",
+                              "ต.ค.",
+                              "พ.ย.",
+                              "ธ.ค.",
+                            ].map((month, index) => (
+                              <option key={index} value={index}>
+                                {month}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <button onClick={increaseMonth} type="button">
+                          {">"}
+                        </button>
+                      </div>
+                    )}
+                    customInput={<CustomInput />}
                   />
                 </div>
               </>
@@ -156,7 +231,7 @@ export default function Login() {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                placeholder="example@mail.com"
+                placeholder="example@email.com"
                 className="border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-[#006680] focus:border-[#006680] outline-none w-full"
               />
             </div>
@@ -171,7 +246,7 @@ export default function Login() {
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                placeholder="••••••••"
+                placeholder="Password"
                 className="border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-[#006680] focus:border-[#006680] outline-none w-full"
               />
             </div>
@@ -187,7 +262,7 @@ export default function Login() {
                   name="confirmPassword"
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  placeholder="••••••••"
+                  placeholder="Confirm Password"
                   className="border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-[#006680] focus:border-[#006680] outline-none w-full"
                 />
               </div>
@@ -196,7 +271,7 @@ export default function Login() {
             {/* ปุ่ม */}
             <button
               type="submit"
-              className="bg-[#006680] hover:bg-[#0289a7] text-white font-semibold py-2.5 rounded-lg text-base transition-transform duration-300 transform hover:scale-105 shadow-md w-full cursor-pointer"
+              className="bg-[#006680] hover:bg-[#0289a7] text-white font-semibold py-2.5 rounded-lg text-base shadow-md w-full cursor-pointer"
             >
               {isRegister ? "สมัครสมาชิก" : "เข้าสู่ระบบ"}
             </button>
