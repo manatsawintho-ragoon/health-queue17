@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ทีมแพทย์ - โรงพยาบาลสุขภาพดี</title>
+  <link rel="stylesheet" href="page.css">
+</head>
+<body>
+  <header>
+    <h1>HEALTH - QUEUE 17</h1>
+  </header>
+
+  <div class="container">
+    <!-- Doctor 1 -->
+    <div class="doctor-card">
+      <img src="pics.doctor/Dr_ Jacono review.jpg" alt="Doctor 1">
+      <div class="card-content">
+        <h3>นพ. สมชาย หวังดี</h3>
+        <div class="department">แผนก: อายุรกรรมทั่วไป</div>
+        <div class="info">
+          <b>ภาษา:</b> ไทย, อังกฤษ<br>
+          <b>การให้บริการ:</b> ตรวจสุขภาพ, ปรึกษาอาการเบื้องต้น, วางแผนการรักษา<br>
+          <b>ประกันที่รองรับ:</b> กรุงเทพประกันชีวิต, เมืองไทยประกัน<br>
+          <b>เอกสารที่ต้องเตรียม:</b> บัตรประชาชน, บัตรประกัน, ใบส่งตัว (ถ้ามี)
+        </div>
+        <button class="button" onclick="bookQueue('นพ. สมชาย หวังดี')">จองคิว</button>
+      </div>
+    </div>
+
+    <!-- Doctor 2 -->
+    <div class="doctor-card">
+      <img src="pics.doctor/ -3.jpg" alt="Doctor 2">
+      <div class="card-content">
+        <h3>พญ. ใจดี สมชื่อ</h3>
+        <div class="department">แผนก: กุมารเวช</div>
+        <div class="info">
+          <b>ภาษา:</b> ไทย, อังกฤษ<br>
+          <b>การให้บริการ:</b> ตรวจเด็ก, ฉีดวัคซีน, ตรวจสุขภาพพัฒนาการ<br>
+          <b>ประกันที่รองรับ:</b> ไทยประกันชีวิต, SCB Health<br>
+          <b>เอกสารที่ต้องเตรียม:</b> บัตรประชาชนผู้ปกครอง, สูติบัตรเด็ก
+        </div>
+        <button class="button" onclick="bookQueue('พญ. ใจดี สมชื่อ')">จองคิว</button>
+      </div>
+    </div>
+
+    <!-- Doctor 3 -->
+    <div class="doctor-card">
+      <img src="pics.doctor/Mark edit.jpg" alt="Doctor 3">
+      <div class="card-content">
+        <h3>นพ. อรุณสวัสดิ์ ขบขัน</h3>
+        <div class="department">แผนก: ศัลยกรรมทั่วไป</div>
+        <div class="info">
+          <b>ภาษา:</b> ไทย, อังกฤษ, ฝรั่งเศษ<br>
+          <b>การให้บริการ:</b> ผ่าตัด, ตรวจแผล, ให้คำปรึกษาด้านศัลยกรรม<br>
+          <b>ประกันที่รองรับ:</b> AIA, Allianz<br>
+          <b>เอกสารที่ต้องเตรียม:</b> บัตรประชาชน, บัตรประกัน, ผลตรวจเดิม
+        </div>
+        <button class="button" onclick="bookQueue('นพ. อรุณสวัสดิ์ ขบขัน')">จองคิว</button>
+      </div>
+    </div>
+  </div>
+
+
+  <footer>
+      <!-- Our Section -->
+  <section class="our-section">
+  <div class="our-container">
+    <!-- Departments -->
+    <div class="our-column">
+      <h2>Our <span>Departments</span></h2>
+      <div class="link-box">
+        <a href="#">Primary Health Care</a>
+        <a href="#">Gynaecological Clinic</a>
+        <a href="#">Diagnosis With Precise</a>
+        <a href="#">Cardiac Clinic</a>
+        <a href="#">General Surgery</a>
+        <a href="#">Rehabilitation Centre</a>
+      </div>
+    </div>
+
+    <!-- Medical Services -->
+    <div class="our-column">
+      <h2>Our <span>Medical Services</span></h2>
+      <div class="link-box">
+        <a href="#">Cardiothoracic Surgery</a>
+        <a href="#">Cardiovascular Diseases</a>
+        <a href="#">Ophthalmology</a>
+        <a href="#">Dermatology</a>
+        <a href="#">General Surgery</a>
+        <a href="#">Consultative & Diagnostic</a>
+      </div>
+    </div>
+
+    <!-- Appointment Form -->
+    <div class="our-column">
+      <h2>Make An <span>Appointment</span></h2>
+      <form class="appointment-form" onsubmit="submitAppointment(event)">
+        <input type="text" placeholder="Full Name" required>
+        <input type="tel" placeholder="Phone Number" required>
+        <input type="email" placeholder="Email Address" required>
+        <input type="date" required>
+        <textarea placeholder="Message" rows="3"></textarea>
+        <button type="submit">SUBMIT</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+  <footer>
+    © 2025 โรงพยาบาลสุขภาพดี - All Rights Reserved
+  </footer>
+
+  <script src="page.js"></script>
+</body>
+</html>
