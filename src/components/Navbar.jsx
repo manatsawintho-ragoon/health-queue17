@@ -59,7 +59,7 @@ export default function Navbar() {
         <a href="#team" className="hover:text-[#006680] cursor-pointer">
           {t("team")}
         </a>
-        <a href="#news" className="hover:text-[#006680] cursor-pointer">
+        <a href="/news" className="hover:text-[#006680] cursor-pointer">
           {t("news")}
         </a>
         <a href="#contact" className="hover:text-[#006680] cursor-pointer">
