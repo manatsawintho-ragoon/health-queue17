@@ -5,6 +5,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { registerLocale } from "react-datepicker";
 import th from "date-fns/locale/th";
+import MainLayout from "../layouts/MainLayout";
 registerLocale("th", th);
 
 export default function Login() {
@@ -89,133 +90,142 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#026777]">
-      <div className="bg-white/95 rounded-3xl shadow-2xl w-full max-w-md p-8 md:p-10 border border-[#b7dfe6] backdrop-blur-md">
-        <h1 className="text-3xl font-extrabold text-[#006680] text-center mb-2 tracking-wide">
-          WHOCARE HOSPITAL
-        </h1>
-        <p className="text-gray-600 text-center mb-8">
-          {isRegister ? "สมัครสมาชิกเพื่อเริ่มต้นใช้งาน" : "เข้าสู่ระบบเพื่อใช้งาน"}
-        </p>
+    <MainLayout>
+      <div className="min-h-screen flex items-center justify-center bg-[#026777]">
+        <div className="bg-white/95 rounded-3xl shadow-2xl w-full max-w-md p-8 md:p-10 border border-[#b7dfe6] backdrop-blur-md">
+          <h1 className="text-3xl font-extrabold text-[#006680] text-center mb-2 tracking-wide">
+            WHOCARE HOSPITAL
+          </h1>
+          <p className="text-gray-600 text-center mb-8">
+            {isRegister
+              ? "สมัครสมาชิกเพื่อเริ่มต้นใช้งาน"
+              : "เข้าสู่ระบบเพื่อใช้งาน"}
+          </p>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5 text-left">
-          {isRegister && (
-            <>
-              {/* หมายเลขบัตร */}
-              <div>
-                <label className="text-gray-800 font-semibold mb-1 block text-sm">
-                  หมายเลขบัตรประชาชน
-                </label>
-                <input
-                  type="text"
-                  name="citizenId"
-                  value={formData.citizenId}
-                  onChange={handleChange}
-                  placeholder="เช่น 1234567890123"
-                  maxLength={13}
-                  className="border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-[#006680] focus:border-[#006680] outline-none w-full"
-                />
-              </div>
+          <form
+            onSubmit={handleSubmit}
+            className="flex flex-col gap-5 text-left"
+          >
+            {isRegister && (
+              <>
+                {/* หมายเลขบัตร */}
+                <div>
+                  <label className="text-gray-800 font-semibold mb-1 block text-sm">
+                    หมายเลขบัตรประชาชน
+                  </label>
+                  <input
+                    type="text"
+                    name="citizenId"
+                    value={formData.citizenId}
+                    onChange={handleChange}
+                    placeholder="เช่น 1234567890123"
+                    maxLength={13}
+                    className="border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-[#006680] focus:border-[#006680] outline-none w-full"
+                  />
+                </div>
 
-              {/* วันเดือนปีเกิด */}
-              <div>
-                <label className="text-gray-800 font-semibold mb-1 block text-sm">
-                  วันเดือนปีเกิด
-                </label>
-                <DatePicker
-                  selected={formData.birthDate}
-                  onChange={(date) => setFormData({ ...formData, birthDate: date })}
-                  locale="th"
-                  dateFormat="dd/MM/yyyy"
-                  placeholderText="เลือกวันเดือนปีเกิด"
-                  showMonthDropdown
-                  showYearDropdown
-                  dropdownMode="select"
-                  className="border border-gray-300 rounded-lg px-4 py-3 text-base w-full focus:ring-2 focus:ring-[#006680] focus:border-[#006680] outline-none bg-[#f9fdff] cursor-pointer"
-                />
-              </div>
-            </>
-          )}
+                {/* วันเดือนปีเกิด */}
+                <div>
+                  <label className="text-gray-800 font-semibold mb-1 block text-sm">
+                    วันเดือนปีเกิด
+                  </label>
+                  <DatePicker
+                    selected={formData.birthDate}
+                    onChange={(date) =>
+                      setFormData({ ...formData, birthDate: date })
+                    }
+                    locale="th"
+                    dateFormat="dd/MM/yyyy"
+                    placeholderText="เลือกวันเดือนปีเกิด"
+                    showMonthDropdown
+                    showYearDropdown
+                    dropdownMode="select"
+                    className="border border-gray-300 rounded-lg px-4 py-3 text-base w-full focus:ring-2 focus:ring-[#006680] focus:border-[#006680] outline-none bg-[#f9fdff] cursor-pointer"
+                  />
+                </div>
+              </>
+            )}
 
-          {/* อีเมล */}
-          <div>
-            <label className="text-gray-800 font-semibold mb-1 block text-sm">
-              อีเมล
-            </label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="example@mail.com"
-              className="border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-[#006680] focus:border-[#006680] outline-none w-full"
-            />
-          </div>
-
-          {/* รหัสผ่าน */}
-          <div>
-            <label className="text-gray-800 font-semibold mb-1 block text-sm">
-              รหัสผ่าน
-            </label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="••••••••"
-              className="border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-[#006680] focus:border-[#006680] outline-none w-full"
-            />
-          </div>
-
-          {/* ยืนยันรหัสผ่าน */}
-          {isRegister && (
+            {/* อีเมล */}
             <div>
               <label className="text-gray-800 font-semibold mb-1 block text-sm">
-                ยืนยันรหัสผ่าน
+                อีเมล
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="example@mail.com"
+                className="border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-[#006680] focus:border-[#006680] outline-none w-full"
+              />
+            </div>
+
+            {/* รหัสผ่าน */}
+            <div>
+              <label className="text-gray-800 font-semibold mb-1 block text-sm">
+                รหัสผ่าน
               </label>
               <input
                 type="password"
-                name="confirmPassword"
-                value={formData.confirmPassword}
+                name="password"
+                value={formData.password}
                 onChange={handleChange}
                 placeholder="••••••••"
                 className="border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-[#006680] focus:border-[#006680] outline-none w-full"
               />
             </div>
-          )}
 
-          {/* ปุ่ม */}
-          <button
-            type="submit"
-            className="bg-[#006680] hover:bg-[#0289a7] text-white font-semibold py-2.5 rounded-lg text-base transition-transform duration-300 transform hover:scale-105 shadow-md w-full cursor-pointer"
-          >
-            {isRegister ? "สมัครสมาชิก" : "เข้าสู่ระบบ"}
-          </button>
-        </form>
+            {/* ยืนยันรหัสผ่าน */}
+            {isRegister && (
+              <div>
+                <label className="text-gray-800 font-semibold mb-1 block text-sm">
+                  ยืนยันรหัสผ่าน
+                </label>
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  placeholder="••••••••"
+                  className="border border-gray-300 rounded-lg px-4 py-2 text-base focus:ring-2 focus:ring-[#006680] focus:border-[#006680] outline-none w-full"
+                />
+              </div>
+            )}
 
-        {/* ลิงก์สลับ */}
-        <div className="text-center mt-6">
-          <p className="text-sm text-gray-700">
-            {isRegister ? "มีบัญชีอยู่แล้ว?" : "ยังไม่มีบัญชี?"}{" "}
-            <span
-              onClick={() => setIsRegister(!isRegister)}
-              className="text-[#006680] cursor-pointer font-semibold hover:underline"
+            {/* ปุ่ม */}
+            <button
+              type="submit"
+              className="bg-[#006680] hover:bg-[#0289a7] text-white font-semibold py-2.5 rounded-lg text-base transition-transform duration-300 transform hover:scale-105 shadow-md w-full cursor-pointer"
             >
-              {isRegister ? "เข้าสู่ระบบ" : "สมัครสมาชิก"}
-            </span>
-          </p>
-        </div>
+              {isRegister ? "สมัครสมาชิก" : "เข้าสู่ระบบ"}
+            </button>
+          </form>
 
-        {/* ปุ่มกลับ */}
-        <div className="mt-6 text-center">
-          <button
-            onClick={() => navigate("/")}
-            className="text-sm text-gray-500 hover:text-[#006680] underline transition cursor-pointer"
-          >
-            ← กลับหน้าแรก
-          </button>
+          {/* ลิงก์สลับ */}
+          <div className="text-center mt-6">
+            <p className="text-sm text-gray-700">
+              {isRegister ? "มีบัญชีอยู่แล้ว?" : "ยังไม่มีบัญชี?"}{" "}
+              <span
+                onClick={() => setIsRegister(!isRegister)}
+                className="text-[#006680] cursor-pointer font-semibold hover:underline"
+              >
+                {isRegister ? "เข้าสู่ระบบ" : "สมัครสมาชิก"}
+              </span>
+            </p>
+          </div>
+
+          {/* ปุ่มกลับ */}
+          <div className="mt-6 text-center">
+            <button
+              onClick={() => navigate("/")}
+              className="text-sm text-gray-500 hover:text-[#006680] underline transition cursor-pointer"
+            >
+              ← กลับหน้าแรก
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </MainLayout>
   );
 }

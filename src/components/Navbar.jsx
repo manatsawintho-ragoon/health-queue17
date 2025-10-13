@@ -14,7 +14,7 @@ export default function Navbar() {
       <div className="flex items-center justify-between px-6 py-5 relative">
         {/* โลโก้อยู่ตรงกลาง */}
         <a
-          href="#"
+          href="/"
           className="absolute left-1/2 transform -translate-x-1/2 text-center"
         >
           <h1 className="text-2xl font-semibold tracking-widest">WHOCARE</h1>
@@ -44,25 +44,25 @@ export default function Navbar() {
 
       {/* แถวเมนู */}
       <div className="bg-white text-black text-1xl font-medium flex justify-center gap-10 py-4">
-        <a href="#home" className="hover:text-[#006680] cursor-pointer">
+        <a href="/" className="hover:text-[#006680] cursor-pointer">
           {t("home")}
         </a>
-        <a href="#about" className="hover:text-[#006680] cursor-pointer">
+        <a href="/about" className="hover:text-[#006680] cursor-pointer">
           {t("about")}
         </a>
-        <a href="#services" className="hover:text-[#006680] cursor-pointer">
+        <a href="/services" className="hover:text-[#006680] cursor-pointer">
           {t("services")}
         </a>
-        <a href="#packages" className="hover:text-[#006680] cursor-pointer">
+        <a href="/packages" className="hover:text-[#006680] cursor-pointer">
           {t("packages")}
         </a>
-        <a href="#team" className="hover:text-[#006680] cursor-pointer">
+        <a href="/doctor_team" className="hover:text-[#006680] cursor-pointer">
           {t("team")}
         </a>
         <a href="/news" className="hover:text-[#006680] cursor-pointer">
           {t("news")}
         </a>
-        <a href="#contact" className="hover:text-[#006680] cursor-pointer">
+        <a href="/contact" className="hover:text-[#006680] cursor-pointer">
           {t("contact")}
         </a>
       </div>

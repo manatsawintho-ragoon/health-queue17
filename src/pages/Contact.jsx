@@ -1,10 +1,10 @@
 import MainLayout from "../layouts/MainLayout";
 
-export default function News() {
+export default function Contact() {
 
   return(
     <MainLayout>
-        <div>News Page</div>
+        <div>Contact Page</div>
     </MainLayout>
   )
 }

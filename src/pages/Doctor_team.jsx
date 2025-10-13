@@ -1,10 +1,10 @@
 import MainLayout from "../layouts/MainLayout";
 
-export default function News() {
+export default function Doctor_team() {
 
   return(
     <MainLayout>
-        <div>News Page</div>
+        <div>Doctor Page</div>
     </MainLayout>
   )
 }
