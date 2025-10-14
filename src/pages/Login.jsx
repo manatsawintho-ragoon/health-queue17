@@ -12,6 +12,7 @@ import DatePicker, { registerLocale } from "react-datepicker";
 import th from "date-fns/locale/th";
 import MainLayout from "../layouts/MainLayout";
 import "react-datepicker/dist/react-datepicker.css";
+import bgImage from "../assets/news1.jpg";
 
 registerLocale("th", th);
 
@@ -82,19 +83,17 @@ export default function Login() {
           return;
         }
 
-        //  สมัครสมาชิก
+        // สมัครสมาชิก
         const userCredential = await createUserWithEmailAndPassword(
           auth,
           formData.email,
           formData.password
         );
 
-        //  อัปเดตชื่อให้ Firebase Auth (เพื่อใช้ใน Navbar)
         await updateProfile(userCredential.user, {
           displayName: formData.fullName,
         });
 
-        //  บันทึกข้อมูลลง Firestore
         await setDoc(doc(db, "users", userCredential.user.uid), {
           prefix: formData.prefix,
           gender: formData.gender,
@@ -110,7 +109,7 @@ export default function Login() {
           () => setIsRegister(false)
         );
       } else {
-        // ✅ เข้าสู่ระบบ
+        // เข้าสู่ระบบ
         await signInWithEmailAndPassword(
           auth,
           formData.email,
@@ -145,64 +144,76 @@ export default function Login() {
 
   return (
     <MainLayout>
-      <div className="flex justify-center items-start min-h-[calc(100vh-80px)] bg-gradient-to-br from-[#005a73] to-[#0099b3] px-4 pt-10">
-        <div className="bg-white/95 rounded-3xl shadow-2xl w-full max-w-md p-8 border border-[#b7dfe6]">
-          <h1 className="text-3xl font-extrabold text-[#006680] text-center mb-2 tracking-wide">
-            WHOCARE HOSPITAL
-          </h1>
-          <p className="text-gray-600 text-center mb-5">
-            {isRegister
-              ? "สมัครสมาชิกเพื่อเริ่มต้นใช้งาน"
-              : "เข้าสู่ระบบเพื่อใช้งาน"}
-          </p>
+      {/* พื้นหลังแบบรูปภาพ */}
+      <div
+        className="relative flex justify-center items-start min-h-screen bg-cover bg-center bg-no-repeat overflow-hidden pt-8"
+        style={{
+          backgroundImage:
+            `url(${bgImage})`,
+        }}
+      >
+        {/* ชั้นโปร่งแสง */}
+        <div className="absolute inset-0 bg-white/60 backdrop-blur-sm"></div>
 
+        {/* กล่องฟอร์ม */}
+        <div className="relative bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl w-full max-w-lg p-8 border border-[#d5eef2]">
+          {/* Header */}
+          <div className="text-center mb-5">
+            <h1 className="text-2xl font-extrabold text-[#007b8f] tracking-wide">
+              WHOCARE HOSPITAL
+            </h1>
+            <p className="text-gray-600 text-sm mt-1">
+              {isRegister
+                ? "สมัครสมาชิกเพื่อเริ่มต้นใช้งาน"
+                : "เข้าสู่ระบบเพื่อใช้งาน"}
+            </p>
+          </div>
+
+          {/* ฟอร์มหลัก */}
           <form
             onSubmit={handleSubmit}
-            className={`flex flex-col gap-3 text-left ${
-              isRegister ? "max-h-[65vh] overflow-y-auto px-3" : ""
-            }`}
+            className="grid grid-cols-2 gap-x-6 gap-y-4 text-left"
           >
             {isRegister && (
               <>
-                {/* คำนำหน้า และ เพศ */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-gray-800 font-semibold mb-1 block text-sm">
-                      คำนำหน้า
-                    </label>
-                    <select
-                      name="prefix"
-                      value={formData.prefix || ""}
-                      onChange={handleChange}
-                      className="border border-gray-300 rounded-lg px-3 py-2 text-base focus:ring-2 focus:ring-[#006680] outline-none w-full"
-                    >
-                      <option value="">-- เลือก --</option>
-                      <option value="นาย">นาย</option>
-                      <option value="นาง">นาง</option>
-                      <option value="นางสาว">นางสาว</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-gray-800 font-semibold mb-1 block text-sm">
-                      เพศ
-                    </label>
-                    <select
-                      name="gender"
-                      value={formData.gender || ""}
-                      onChange={handleChange}
-                      className="border border-gray-300 rounded-lg px-3 py-2 text-base focus:ring-2 focus:ring-[#006680] outline-none w-full"
-                    >
-                      <option value="">-- เลือก --</option>
-                      <option value="ชาย">ชาย</option>
-                      <option value="หญิง">หญิง</option>
-                    </select>
-                  </div>
+                {/* คำนำหน้า */}
+                <div>
+                  <label className="text-gray-700 font-medium mb-1 block text-sm">
+                    คำนำหน้า
+                  </label>
+                  <select
+                    name="prefix"
+                    value={formData.prefix || ""}
+                    onChange={handleChange}
+                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-[#007b8f] outline-none w-full bg-white"
+                  >
+                    <option value="">-- เลือก --</option>
+                    <option value="นาย">นาย</option>
+                    <option value="นาง">นาง</option>
+                    <option value="นางสาว">นางสาว</option>
+                  </select>
                 </div>
 
-                {/* ชื่อ-นามสกุล */}
+                {/* เพศ */}
                 <div>
-                  <label className="text-gray-800 font-semibold mb-1 block text-sm">
+                  <label className="text-gray-700 font-medium mb-1 block text-sm">
+                    เพศ
+                  </label>
+                  <select
+                    name="gender"
+                    value={formData.gender || ""}
+                    onChange={handleChange}
+                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-[#007b8f] outline-none w-full bg-white"
+                  >
+                    <option value="">-- เลือก --</option>
+                    <option value="ชาย">ชาย</option>
+                    <option value="หญิง">หญิง</option>
+                  </select>
+                </div>
+
+                {/* ชื่อ - นามสกุล */}
+                <div className="col-span-2">
+                  <label className="text-gray-700 font-medium mb-1 block text-sm">
                     ชื่อ - นามสกุล
                   </label>
                   <input
@@ -211,13 +222,13 @@ export default function Login() {
                     value={formData.fullName}
                     onChange={handleChange}
                     placeholder="เช่น หนุ่ม กรรชัย"
-                    className="border border-gray-300 rounded-lg px-3 py-2 text-base focus:ring-2 focus:ring-[#006680] outline-none w-full"
+                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-[#007b8f] outline-none w-full bg-white"
                   />
                 </div>
 
                 {/* หมายเลขบัตรประชาชน */}
-                <div>
-                  <label className="text-gray-800 font-semibold mb-1 block text-sm">
+                <div className="col-span-2">
+                  <label className="text-gray-700 font-medium mb-1 block text-sm">
                     หมายเลขบัตรประชาชน
                   </label>
                   <input
@@ -226,14 +237,14 @@ export default function Login() {
                     value={formData.citizenId}
                     onChange={handleChange}
                     maxLength={13}
-                    placeholder="13 หลัก"
-                    className="border border-gray-300 rounded-lg px-3 py-2 text-base focus:ring-2 focus:ring-[#006680] outline-none w-full"
+                    placeholder="หมายเลขบัตรประชาชน 13 หลัก"
+                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-[#007b8f] outline-none w-full bg-white"
                   />
                 </div>
 
                 {/* วันเดือนปีเกิด */}
-                <div>
-                  <label className="text-gray-800 font-semibold mb-1 block text-sm">
+                <div className="col-span-2">
+                  <label className="text-gray-700 font-medium mb-1 block text-sm">
                     วันเดือนปีเกิด
                   </label>
                   <DatePicker
@@ -247,94 +258,15 @@ export default function Login() {
                     showYearDropdown
                     dropdownMode="select"
                     customInput={<CustomInput />}
-                    renderCustomHeader={({
-                      date,
-                      changeYear,
-                      changeMonth,
-                      decreaseMonth,
-                      increaseMonth,
-                      prevMonthButtonDisabled,
-                      nextMonthButtonDisabled,
-                    }) => {
-                      const years = Array.from(
-                        { length: 101 },
-                        (_, i) => i + 1920
-                      );
-                      const months = [
-                        "มกราคม",
-                        "กุมภาพันธ์",
-                        "มีนาคม",
-                        "เมษายน",
-                        "พฤษภาคม",
-                        "มิถุนายน",
-                        "กรกฎาคม",
-                        "สิงหาคม",
-                        "กันยายน",
-                        "ตุลาคม",
-                        "พฤศจิกายน",
-                        "ธันวาคม",
-                      ];
-
-                      return (
-                        <div
-                          style={{
-                            margin: 10,
-                            display: "flex",
-                            justifyContent: "center",
-                            gap: 8,
-                            alignItems: "center",
-                          }}
-                        >
-                          <button
-                            onClick={decreaseMonth}
-                            disabled={prevMonthButtonDisabled}
-                          >
-                            {"<"}
-                          </button>
-                          <select
-                            value={months[date.getMonth()]}
-                            onChange={({ target: { value } }) =>
-                              changeMonth(months.indexOf(value))
-                            }
-                          >
-                            {months.map((month) => (
-                              <option key={month} value={month}>
-                                {month}
-                              </option>
-                            ))}
-                          </select>
-
-                          {/* แสดงปี พ.ศ. */}
-                          <select
-                            value={date.getFullYear()}
-                            onChange={({ target: { value } }) =>
-                              changeYear(value)
-                            }
-                          >
-                            {years.map((year) => (
-                              <option key={year} value={year}>
-                                {year + 543}
-                              </option>
-                            ))}
-                          </select>
-
-                          <button
-                            onClick={increaseMonth}
-                            disabled={nextMonthButtonDisabled}
-                          >
-                            {">"}
-                          </button>
-                        </div>
-                      );
-                    }}
+                    className="w-full"
                   />
                 </div>
               </>
             )}
 
             {/* อีเมล */}
-            <div>
-              <label className="text-gray-800 font-semibold mb-1 block text-sm">
+            <div className="col-span-2">
+              <label className="text-gray-700 font-medium mb-1 block text-sm">
                 อีเมล
               </label>
               <input
@@ -343,13 +275,13 @@ export default function Login() {
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="example@email.com"
-                className="border border-gray-300 rounded-lg px-3 py-2 text-base focus:ring-2 focus:ring-[#006680] outline-none w-full"
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-[#007b8f] outline-none w-full bg-white"
               />
             </div>
 
             {/* รหัสผ่าน */}
-            <div>
-              <label className="text-gray-800 font-semibold mb-1 block text-sm">
+            <div className={`${isRegister ? "col-span-1" : "col-span-2"}`}>
+              <label className="text-gray-700 font-medium mb-1 block text-sm">
                 รหัสผ่าน
               </label>
               <input
@@ -358,14 +290,14 @@ export default function Login() {
                 value={formData.password}
                 onChange={handleChange}
                 placeholder="Password"
-                className="border border-gray-300 rounded-lg px-3 py-2 text-base focus:ring-2 focus:ring-[#006680] outline-none w-full"
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-[#007b8f] outline-none w-full bg-white"
               />
             </div>
 
             {/* ยืนยันรหัสผ่าน */}
             {isRegister && (
               <div>
-                <label className="text-gray-800 font-semibold mb-1 block text-sm">
+                <label className="text-gray-700 font-medium mb-1 block text-sm">
                   ยืนยันรหัสผ่าน
                 </label>
                 <input
@@ -374,40 +306,39 @@ export default function Login() {
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   placeholder="Confirm Password"
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-base focus:ring-2 focus:ring-[#006680] outline-none w-full"
+                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-[#007b8f] outline-none w-full bg-white"
                 />
               </div>
             )}
 
-            <button
-              type="submit"
-              className="bg-[#006680] hover:bg-[#0289a7] text-white font-semibold py-2.5 rounded-lg text-base shadow-md w-full cursor-pointer mt-2"
-            >
-              {isRegister ? "สมัครสมาชิก" : "เข้าสู่ระบบ"}
-            </button>
+            {/* ปุ่ม */}
+            <div className="col-span-2 mt-2">
+              <button
+                type="submit"
+                className="bg-[#006680] hover:bg-[#0099b3] text-white font-semibold py-2.5 rounded-md text-base shadow-sm w-full transition cursor-pointer"
+              >
+                {isRegister ? "สมัครสมาชิก" : "เข้าสู่ระบบ"}
+              </button>
+            </div>
           </form>
 
-          {/* ลิงก์สลับ */}
-          <div className="text-center mt-4">
-            <p className="text-sm text-gray-700">
-              {isRegister ? "มีบัญชีอยู่แล้ว?" : "ยังไม่มีบัญชี?"}{" "}
-              <span
-                onClick={() => setIsRegister(!isRegister)}
-                className="text-[#006680] cursor-pointer font-semibold hover:underline"
-              >
-                {isRegister ? "เข้าสู่ระบบ" : "สมัครสมาชิก"}
-              </span>
-            </p>
-          </div>
-
-          {/* กลับหน้าแรก */}
-          <div className="mt-3 text-center">
-            <button
-              onClick={() => navigate("/")}
-              className="text-sm text-gray-500 hover:text-[#006680] underline transition cursor-pointer"
+          {/* Footer */}
+          <div className="text-center mt-5 text-sm text-gray-600">
+            {isRegister ? "มีบัญชีอยู่แล้ว?" : "ยังไม่มีบัญชี?"}{" "}
+            <span
+              onClick={() => setIsRegister(!isRegister)}
+              className="text-[#007b8f] cursor-pointer font-semibold hover:underline"
             >
-              ← กลับหน้าแรก
-            </button>
+              {isRegister ? "เข้าสู่ระบบ" : "สมัครสมาชิก"}
+            </span>
+            <div className="mt-2">
+              <button
+                onClick={() => navigate("/")}
+                className="text-xs text-gray-500 hover:text-[#007b8f] underline transition cursor-pointer"
+              >
+                ← กลับหน้าแรก
+              </button>
+            </div>
           </div>
         </div>
       </div>

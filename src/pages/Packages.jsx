@@ -63,7 +63,7 @@ export default function Packages() {
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-6 py-2 rounded-full border font-medium transition-all duration-300 transform ${
+            className={`px-6 py-2 rounded-full border font-medium transition-all duration-300 transform cursor-pointer ${
               activeTab === tab
                 ? "bg-[#0288a7] text-white border-[#0288a7] scale-105 shadow-md"
                 : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100 hover:scale-105"
@@ -98,7 +98,7 @@ export default function Packages() {
               <p className="text-[#0289a7] font-bold text-lg mb-3">
                 {pkg.price}
               </p>
-              <button className="mt-2 bg-[#006680] hover:bg-[#0289a7] text-white px-6 py-2 rounded-full font-medium text-sm transition-all duration-300 shadow-md hover:shadow-xl transform hover:-translate-y-1">
+              <button className="mt-2 bg-[#006680] hover:bg-[#0289a7] text-white px-6 py-2 rounded-full font-medium text-sm transition-all duration-300 shadow-md hover:shadow-xl transform hover:-translate-y-1 cursor-pointer">
                 อ่านเพิ่มเติม
               </button>
             </div>
@@ -166,21 +166,6 @@ export default function Packages() {
               <p className="text-gray-600">{faq.a}</p>
             </div>
           ))}
-        </div>
-      </div>
-
-      <div className="text-center py-16 bg-[#0288a7] text-white relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1550831107-1553da8c8464?auto=format&fit=crop&w=1600&q=80')] bg-cover bg-center opacity-10"></div>
-        <div className="relative z-10">
-          <h2 className="text-3xl font-bold mb-4">
-            พร้อมดูแลสุขภาพของคุณแล้วหรือยัง?
-          </h2>
-          <p className="mb-6 text-lg opacity-90">
-            จองแพ็กเกจวันนี้ เพื่อสุขภาพที่ดีกว่าพรุ่งนี้
-          </p>
-          <button className="bg-white text-[#0288a7] px-8 py-3 rounded-full font-semibold hover:bg-gray-100 shadow-md hover:shadow-lg transition transform hover:-translate-y-1">
-            จองตอนนี้
-          </button>
         </div>
       </div>
     </MainLayout>
