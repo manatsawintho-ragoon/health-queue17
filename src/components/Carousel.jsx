@@ -106,8 +106,8 @@ export default function Carousel() {
           </div>
         </div>
       ))}
-
-      {/* ปุ่มลูกศร */}
+      
+      {/* ปุ่มลูกศร */} 
       <button
         onClick={prevSlide}
         className="absolute left-4 top-1/2 -translate-y-1/2 text-white text-3xl cursor-pointer hover:scale-125 transition-transform z-30"

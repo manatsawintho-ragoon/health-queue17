@@ -1,5 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 export default function Navbar() {
   const { t, i18n } = useTranslation();
@@ -44,15 +45,15 @@ export default function Navbar() {
 
       {/* แถวเมนู */}
       <div className="bg-white text-black text-1xl font-medium flex justify-center gap-10 py-4">
-        <a href="#home" className="hover:text-[#006680] cursor-pointer">
+        <Link to="/" className="hover:text-[#006680] cursor-pointer">
           {t("home")}
-        </a>
+        </Link>
         <a href="#about" className="hover:text-[#006680] cursor-pointer">
           {t("about")}
         </a>
-        <a href="#services" className="hover:text-[#006680] cursor-pointer">
+        <Link to="/queue" className="hover:text-[#006680] cursor-pointer">
           {t("services")}
-        </a>
+        </Link>
         <a href="#packages" className="hover:text-[#006680] cursor-pointer">
           {t("packages")}
         </a>
