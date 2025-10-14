@@ -247,6 +247,86 @@ export default function Login() {
                     showYearDropdown
                     dropdownMode="select"
                     customInput={<CustomInput />}
+                    renderCustomHeader={({
+                      date,
+                      changeYear,
+                      changeMonth,
+                      decreaseMonth,
+                      increaseMonth,
+                      prevMonthButtonDisabled,
+                      nextMonthButtonDisabled,
+                    }) => {
+                      const years = Array.from(
+                        { length: 101 },
+                        (_, i) => i + 1920
+                      );
+                      const months = [
+                        "มกราคม",
+                        "กุมภาพันธ์",
+                        "มีนาคม",
+                        "เมษายน",
+                        "พฤษภาคม",
+                        "มิถุนายน",
+                        "กรกฎาคม",
+                        "สิงหาคม",
+                        "กันยายน",
+                        "ตุลาคม",
+                        "พฤศจิกายน",
+                        "ธันวาคม",
+                      ];
+
+                      return (
+                        <div
+                          style={{
+                            margin: 10,
+                            display: "flex",
+                            justifyContent: "center",
+                            gap: 8,
+                            alignItems: "center",
+                          }}
+                        >
+                          <button
+                            onClick={decreaseMonth}
+                            disabled={prevMonthButtonDisabled}
+                          >
+                            {"<"}
+                          </button>
+                          <select
+                            value={months[date.getMonth()]}
+                            onChange={({ target: { value } }) =>
+                              changeMonth(months.indexOf(value))
+                            }
+                          >
+                            {months.map((month) => (
+                              <option key={month} value={month}>
+                                {month}
+                              </option>
+                            ))}
+                          </select>
+
+                          {/* แสดงปี พ.ศ. */}
+                          <select
+                            value={date.getFullYear()}
+                            onChange={({ target: { value } }) =>
+                              changeYear(value)
+                            }
+                          >
+                            {years.map((year) => (
+                              <option key={year} value={year}>
+                                {year + 543}
+                              </option>
+                            ))}
+                          </select>
+
+                          <button
+                            onClick={increaseMonth}
+                            disabled={nextMonthButtonDisabled}
+                          >
+                            {">"}
+                          </button>
+                        </div>
+                      );
+                    }}
                   />
                 </div>
               </>
