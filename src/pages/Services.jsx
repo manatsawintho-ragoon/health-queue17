@@ -59,7 +59,7 @@ export default function Services() {
     },
   ];
 
-  // ✅ เช็กสถานะล็อกอินจริงจาก Firebase
+  //  เช็กสถานะล็อกอินจริงจาก Firebase
   const handleBook = (serviceTitle) => {
     const user = auth.currentUser;
 
@@ -80,7 +80,7 @@ export default function Services() {
       return;
     }
 
-    // ✅ ถ้าล็อกอินแล้ว
+    //  ถ้าล็อกอินแล้ว
     Swal.fire({
       icon: "success",
       title: "จองบริการสำเร็จ!",

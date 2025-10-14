@@ -18,4 +18,6 @@ export default defineConfig({
       },
     },
   },
+
+  base: "Whocare",
 });

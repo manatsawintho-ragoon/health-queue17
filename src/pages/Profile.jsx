@@ -49,6 +49,14 @@ export default function Profile() {
     return `${day} ${month} ${year}`;
   };
 
+  const calculateAge = (birthDateStr) => {
+    if (!birthDateStr) return "-";
+    const birthDate = new Date(birthDateStr);
+    const diffMs = Date.now() - birthDate.getTime();
+    const ageDate = new Date(diffMs);
+    return Math.abs(ageDate.getUTCFullYear() - 1970);
+  };
+
   if (!userData) {
     return (
       <MainLayout>
@@ -71,7 +79,10 @@ export default function Profile() {
           {/* ส่วนบน: รูปภาพและชื่อ */}
           <div className="flex flex-col items-center text-center mt-6">
             <img
-              src={userData.photoURL || "https://cdn-icons-png.flaticon.com/512/149/149071.png"}
+              src={
+                userData.photoURL ||
+                "https://cdn-icons-png.flaticon.com/512/149/149071.png"
+              }
               alt="avatar"
               className="w-28 h-28 rounded-full border-4 border-[#0289a7] shadow-md mb-4"
             />
@@ -87,21 +98,49 @@ export default function Profile() {
           {/* ข้อมูลส่วนตัว */}
           <div className="space-y-3 text-gray-800">
             <div className="flex justify-between items-center">
-              <span className="font-semibold text-[#006680]">เลขบัตรประชาชน</span>
+              <span className="font-semibold text-[#006680]">
+                ชื่อ - นามสกุล
+              </span>
+              <span>
+                {userData.prefix} {userData.fullName}
+              </span>
+            </div>
+
+            <div className="flex justify-between items-center">
+              <span className="font-semibold text-[#006680]">เพศ</span>
+              <span>{userData.gender || "-"}</span>
+            </div>
+
+            <div className="flex justify-between items-center">
+              <span className="font-semibold text-[#006680]">อายุ</span>
+              <span>{calculateAge(userData.birthDate)} ปี</span>
+            </div>
+
+            <div className="flex justify-between items-center">
+              <span className="font-semibold text-[#006680]">
+                เลขบัตรประชาชน
+              </span>
               <span>{userData.citizenId}</span>
             </div>
+
             <div className="flex justify-between items-center">
-              <span className="font-semibold text-[#006680]">วันเดือนปีเกิด</span>
+              <span className="font-semibold text-[#006680]">
+                วันเดือนปีเกิด
+              </span>
               <span>{formatThaiDate(userData.birthDate)}</span>
             </div>
+
             <div className="flex justify-between items-center">
               <span className="font-semibold text-[#006680]">อีเมล</span>
               <span>{userData.email}</span>
             </div>
+
             <div className="flex justify-between items-center">
               <span className="font-semibold text-[#006680]">วันที่สมัคร</span>
               <span>
-                {formatThaiDate(userData.createdAt?.toDate?.() || userData.createdAt)}
+                {formatThaiDate(
+                  userData.createdAt?.toDate?.() || userData.createdAt
+                )}
               </span>
             </div>
           </div>

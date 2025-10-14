@@ -18,7 +18,7 @@ import Profile from "./pages/Profile.jsx";
 
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <BrowserRouter>
+    <BrowserRouter basename="Whocare">
       <Routes>
 
         <Route path="/" element={<App />} />

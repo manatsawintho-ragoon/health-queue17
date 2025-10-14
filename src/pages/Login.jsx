@@ -19,6 +19,8 @@ export default function Login() {
   const navigate = useNavigate();
   const [isRegister, setIsRegister] = useState(false);
   const [formData, setFormData] = useState({
+    prefix: "",
+    gender: "",
     fullName: "",
     citizenId: "",
     birthDate: null,
@@ -72,40 +74,48 @@ export default function Login() {
         }
 
         if (formData.password !== formData.confirmPassword) {
-          Swal.fire("รหัสผ่านไม่ตรงกัน", "กรุณายืนยันรหัสผ่านอีกครั้ง", "error");
+          Swal.fire(
+            "รหัสผ่านไม่ตรงกัน",
+            "กรุณายืนยันรหัสผ่านอีกครั้ง",
+            "error"
+          );
           return;
         }
 
-        // ✅ สมัครสมาชิก
+        //  สมัครสมาชิก
         const userCredential = await createUserWithEmailAndPassword(
           auth,
           formData.email,
           formData.password
         );
 
-        // ✅ อัปเดตชื่อให้ Firebase Auth (เพื่อใช้ใน Navbar)
+        //  อัปเดตชื่อให้ Firebase Auth (เพื่อใช้ใน Navbar)
         await updateProfile(userCredential.user, {
           displayName: formData.fullName,
         });
 
-        // ✅ บันทึกข้อมูลลง Firestore พร้อม fullName และ avatar จำลอง
+        //  บันทึกข้อมูลลง Firestore
         await setDoc(doc(db, "users", userCredential.user.uid), {
+          prefix: formData.prefix,
+          gender: formData.gender,
           fullName: formData.fullName,
           citizenId: formData.citizenId,
-          birthDate: formData.birthDate
-            ? formData.birthDate.toISOString()
-            : null,
+          birthDate: formData.birthDate.toISOString(),
           email: formData.email,
           createdAt: new Date(),
           photoURL: "https://cdn-icons-png.flaticon.com/512/149/149071.png",
         });
 
-        Swal.fire("สมัครสมาชิกสำเร็จ", "เข้าสู่ระบบได้เลย", "success").then(() =>
-          setIsRegister(false)
+        Swal.fire("สมัครสมาชิกสำเร็จ", "เข้าสู่ระบบได้เลย", "success").then(
+          () => setIsRegister(false)
         );
       } else {
         // ✅ เข้าสู่ระบบ
-        await signInWithEmailAndPassword(auth, formData.email, formData.password);
+        await signInWithEmailAndPassword(
+          auth,
+          formData.email,
+          formData.password
+        );
         Swal.fire({
           icon: "success",
           title: "เข้าสู่ระบบสำเร็จ",
@@ -116,9 +126,17 @@ export default function Login() {
     } catch (error) {
       console.error(error);
       if (error.code === "auth/email-already-in-use") {
-        Swal.fire("อีเมลนี้ถูกใช้แล้ว", "กรุณาใช้อีเมลอื่น หรือเข้าสู่ระบบแทน", "error");
+        Swal.fire(
+          "อีเมลนี้ถูกใช้แล้ว",
+          "กรุณาใช้อีเมลอื่น หรือเข้าสู่ระบบแทน",
+          "error"
+        );
       } else if (error.code === "auth/invalid-credential") {
-        Swal.fire("เข้าสู่ระบบไม่สำเร็จ", "อีเมลหรือรหัสผ่านไม่ถูกต้อง", "error");
+        Swal.fire(
+          "เข้าสู่ระบบไม่สำเร็จ",
+          "อีเมลหรือรหัสผ่านไม่ถูกต้อง",
+          "error"
+        );
       } else {
         Swal.fire("เกิดข้อผิดพลาด", error.message, "error");
       }
@@ -133,7 +151,9 @@ export default function Login() {
             WHOCARE HOSPITAL
           </h1>
           <p className="text-gray-600 text-center mb-5">
-            {isRegister ? "สมัครสมาชิกเพื่อเริ่มต้นใช้งาน" : "เข้าสู่ระบบเพื่อใช้งาน"}
+            {isRegister
+              ? "สมัครสมาชิกเพื่อเริ่มต้นใช้งาน"
+              : "เข้าสู่ระบบเพื่อใช้งาน"}
           </p>
 
           <form
@@ -144,37 +164,74 @@ export default function Login() {
           >
             {isRegister && (
               <>
+                {/* คำนำหน้า และ เพศ */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-gray-800 font-semibold mb-1 block text-sm">
-                      ชื่อ - นามสกุล
+                      คำนำหน้า
                     </label>
-                    <input
-                      type="text"
-                      name="fullName"
-                      value={formData.fullName}
+                    <select
+                      name="prefix"
+                      value={formData.prefix || ""}
                       onChange={handleChange}
-                      placeholder="นาย ไอที ซัพพอร์ต"
                       className="border border-gray-300 rounded-lg px-3 py-2 text-base focus:ring-2 focus:ring-[#006680] outline-none w-full"
-                    />
+                    >
+                      <option value="">-- เลือก --</option>
+                      <option value="นาย">นาย</option>
+                      <option value="นาง">นาง</option>
+                      <option value="นางสาว">นางสาว</option>
+                    </select>
                   </div>
 
                   <div>
                     <label className="text-gray-800 font-semibold mb-1 block text-sm">
-                      หมายเลขบัตรประชาชน
+                      เพศ
                     </label>
-                    <input
-                      type="text"
-                      name="citizenId"
-                      value={formData.citizenId}
+                    <select
+                      name="gender"
+                      value={formData.gender || ""}
                       onChange={handleChange}
-                      maxLength={13}
-                      placeholder="13 หลัก"
                       className="border border-gray-300 rounded-lg px-3 py-2 text-base focus:ring-2 focus:ring-[#006680] outline-none w-full"
-                    />
+                    >
+                      <option value="">-- เลือก --</option>
+                      <option value="ชาย">ชาย</option>
+                      <option value="หญิง">หญิง</option>
+                    </select>
                   </div>
                 </div>
 
+                {/* ชื่อ-นามสกุล */}
+                <div>
+                  <label className="text-gray-800 font-semibold mb-1 block text-sm">
+                    ชื่อ - นามสกุล
+                  </label>
+                  <input
+                    type="text"
+                    name="fullName"
+                    value={formData.fullName}
+                    onChange={handleChange}
+                    placeholder="เช่น หนุ่ม กรรชัย"
+                    className="border border-gray-300 rounded-lg px-3 py-2 text-base focus:ring-2 focus:ring-[#006680] outline-none w-full"
+                  />
+                </div>
+
+                {/* หมายเลขบัตรประชาชน */}
+                <div>
+                  <label className="text-gray-800 font-semibold mb-1 block text-sm">
+                    หมายเลขบัตรประชาชน
+                  </label>
+                  <input
+                    type="text"
+                    name="citizenId"
+                    value={formData.citizenId}
+                    onChange={handleChange}
+                    maxLength={13}
+                    placeholder="13 หลัก"
+                    className="border border-gray-300 rounded-lg px-3 py-2 text-base focus:ring-2 focus:ring-[#006680] outline-none w-full"
+                  />
+                </div>
+
+                {/* วันเดือนปีเกิด */}
                 <div>
                   <label className="text-gray-800 font-semibold mb-1 block text-sm">
                     วันเดือนปีเกิด
