@@ -4,7 +4,7 @@ export default function News() {
 
   return(
     <MainLayout>
-        <div>News Page</div>
+        <div>News Page kiki</div>
     </MainLayout>
   )
 }
