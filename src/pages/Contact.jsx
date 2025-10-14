@@ -62,8 +62,8 @@ export default function Contact() {
             </ContactCard>
 
             <ContactCard icon={<GlobeAltIcon className="h-6 w-6" />} title="Website">
-              <a href="#" className="text-sky-700 font-medium hover:underline">
-                -------
+              <a href="https://www.spu.ac.th/" target="_blank" className="text-sky-700 font-medium hover:underline">
+                www.spu.ac.th
               </a>
             </ContactCard>
           </div>
