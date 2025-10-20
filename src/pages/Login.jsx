@@ -148,8 +148,7 @@ export default function Login() {
       <div
         className="relative flex justify-center items-start min-h-screen bg-cover bg-center bg-no-repeat overflow-hidden pt-8"
         style={{
-          backgroundImage:
-            `url(${bgImage})`,
+          backgroundImage: `url(${bgImage})`,
         }}
       >
         {/* ชั้นโปร่งแสง */}
@@ -258,7 +257,95 @@ export default function Login() {
                     showYearDropdown
                     dropdownMode="select"
                     customInput={<CustomInput />}
-                    className="w-full"
+                    renderCustomHeader={({
+                      date,
+                      changeYear,
+                      changeMonth,
+                      decreaseMonth,
+                      increaseMonth,
+                      prevMonthButtonDisabled,
+                      nextMonthButtonDisabled,
+                    }) => {
+                      // รายชื่อเดือนภาษาไทย
+                      const months = [
+                        "มกราคม",
+                        "กุมภาพันธ์",
+                        "มีนาคม",
+                        "เมษายน",
+                        "พฤษภาคม",
+                        "มิถุนายน",
+                        "กรกฎาคม",
+                        "สิงหาคม",
+                        "กันยายน",
+                        "ตุลาคม",
+                        "พฤศจิกายน",
+                        "ธันวาคม",
+                      ];
+
+                      // สร้างช่วงปี (ค.ศ.) แล้วแสดงเป็น พ.ศ.
+                      const years = Array.from(
+                        { length: 101 },
+                        (_, i) => 1925 + i
+                      );
+
+                      return (
+                        <div
+                          style={{
+                            margin: 10,
+                            display: "flex",
+                            justifyContent: "center",
+                            gap: 8,
+                            alignItems: "center",
+                          }}
+                        >
+                          <button
+                            onClick={decreaseMonth}
+                            disabled={prevMonthButtonDisabled}
+                            className="px-2 py-1 text-sm bg-gray-100 rounded hover:bg-gray-200"
+                          >
+                            {"<"}
+                          </button>
+
+                          {/* เดือน */}
+                          <select
+                            value={months[date.getMonth()]}
+                            onChange={({ target: { value } }) =>
+                              changeMonth(months.indexOf(value))
+                            }
+                            className="border border-gray-300 rounded px-2 py-1 text-sm"
+                          >
+                            {months.map((month) => (
+                              <option key={month} value={month}>
+                                {month}
+                              </option>
+                            ))}
+                          </select>
+
+                          {/* ปี พ.ศ. */}
+                          <select
+                            value={date.getFullYear()}
+                            onChange={({ target: { value } }) =>
+                              changeYear(value)
+                            }
+                            className="border border-gray-300 rounded px-2 py-1 text-sm"
+                          >
+                            {years.map((year) => (
+                              <option key={year} value={year}>
+                                {year + 543}
+                              </option>
+                            ))}
+                          </select>
+
+                          <button
+                            onClick={increaseMonth}
+                            disabled={nextMonthButtonDisabled}
+                            className="px-2 py-1 text-sm bg-gray-100 rounded hover:bg-gray-200"
+                          >
+                            {">"}
+                          </button>
+                        </div>
+                      );
+                    }}
                   />
                 </div>
               </>
@@ -267,7 +354,7 @@ export default function Login() {
             {/* อีเมล */}
             <div className="col-span-2">
               <label className="text-gray-700 font-medium mb-1 block text-sm">
-                อีเมล
+                 อีเมล
               </label>
               <input
                 type="email"
@@ -282,7 +369,7 @@ export default function Login() {
             {/* รหัสผ่าน */}
             <div className={`${isRegister ? "col-span-1" : "col-span-2"}`}>
               <label className="text-gray-700 font-medium mb-1 block text-sm">
-                รหัสผ่าน
+                 รหัสผ่าน
               </label>
               <input
                 type="password"
@@ -317,7 +404,7 @@ export default function Login() {
                 type="submit"
                 className="bg-[#006680] hover:bg-[#0099b3] text-white font-semibold py-2.5 rounded-md text-base shadow-sm w-full transition cursor-pointer"
               >
-                {isRegister ? "สมัครสมาชิก" : "เข้าสู่ระบบ"}
+                <i class="fa-solid fa-right-to-bracket"></i> {isRegister ? "สมัครสมาชิก" : "เข้าสู่ระบบ"}
               </button>
             </div>
           </form>
@@ -329,7 +416,7 @@ export default function Login() {
               onClick={() => setIsRegister(!isRegister)}
               className="text-[#007b8f] cursor-pointer font-semibold hover:underline"
             >
-              {isRegister ? "เข้าสู่ระบบ" : "สมัครสมาชิก"}
+              <i class="fa-regular fa-user"></i> {isRegister ? "เข้าสู่ระบบ" : "สมัครสมาชิก"}
             </span>
             <div className="mt-2">
               <button

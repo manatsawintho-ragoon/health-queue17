@@ -137,7 +137,7 @@ export default function Services() {
                   onClick={() => setSelectedService(service)}
                   className="mt-2 bg-[#006680] hover:bg-[#0289a7] text-white px-6 py-2 rounded-full font-medium text-sm transition cursor-pointer"
                 >
-                  อ่านเพิ่มเติม
+                  <i class="fa-brands fa-readme"></i> อ่านเพิ่มเติม
                 </button>
               </div>
             </div>

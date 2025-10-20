@@ -99,7 +99,7 @@ export default function Packages() {
                 {pkg.price}
               </p>
               <button className="mt-2 bg-[#006680] hover:bg-[#0289a7] text-white px-6 py-2 rounded-full font-medium text-sm transition-all duration-300 shadow-md hover:shadow-xl transform hover:-translate-y-1 cursor-pointer">
-                อ่านเพิ่มเติม
+                <i class="fa-brands fa-readme"></i> อ่านเพิ่มเติม
               </button>
             </div>
           </div>

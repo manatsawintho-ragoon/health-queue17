@@ -1,18 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import { auth, db } from "../firebaseConfig";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
+import logo from "../assets/WHOCARE-logo.png";
 
 export default function Navbar() {
-  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
-
-  const changeLanguage = (lang) => i18n.changeLanguage(lang);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -40,13 +37,13 @@ export default function Navbar() {
   return (
     <nav className="bg-[#006680] text-white shadow sticky top-0 z-50">
       {/* แถวบน */}
-      <div className="flex items-center justify-between px-6 py-5 relative">
+      <div className="flex items-center justify-between px-6 py-4 relative">
         {/* โลโก้อยู่ตรงกลาง */}
         <Link
           to="/"
-          className="absolute left-1/2 transform -translate-x-1/2 text-center"
+          className="absolute left-1/2 transform -translate-x-1/2 text-center flex flex-col items-center justify-center"
         >
-          <h1 className="text-2xl font-semibold tracking-widest">WHOCARE</h1>
+          <h1 className="text-2xl font-semibold tracking-widest">WHOCARE</h1>{" "}
           <p className="text-sm tracking-[0.4em]">คุณจะไม่ตายเพียงลำพัง!</p>
         </Link>
 
@@ -96,46 +93,36 @@ export default function Navbar() {
             // ถ้ายังไม่ล็อกอิน → ปุ่มนัดหมายเข้ารับบริการ
             <Link
               to="/login"
-              className="bg-[#0289a7] hover:bg-[#03a9c5] transition px-5 py-2 rounded-full text-sm font-semibold cursor-pointer shadow"
+              className="bg-[#0289a7] hover:bg-[#03a9c5] transition px-8 py-3 rounded-full text-sm font-semibold cursor-pointer shadow"
             >
-              {t("appointment")}
+              <i class="fa-solid fa-right-to-bracket"></i> นัดหมายเข้ารับบริการ
             </Link>
           )}
-
-          {/* ปุ่มเปลี่ยนภาษา */}
-          <select
-            onChange={(e) => changeLanguage(e.target.value)}
-            value={i18n.language}
-            className="bg-[#005a73] text-white rounded-md px-2 py-1 text-sm outline-none cursor-pointer"
-          >
-            <option value="th">TH</option>
-            <option value="en">EN</option>
-          </select>
         </div>
       </div>
 
       {/* แถวเมนู */}
       <div className="bg-white text-black text-1xl font-medium flex justify-center gap-10 py-4">
         <Link to="/" className="hover:text-[#006680] cursor-pointer">
-          {t("home")}
+          หน้าแรก
         </Link>
         <Link to="/about" className="hover:text-[#006680] cursor-pointer">
-          {t("about")}
+          เกี่ยวกับเรา
         </Link>
         <Link to="/services" className="hover:text-[#006680] cursor-pointer">
-          {t("services")}
+          คลินิกบริการ
         </Link>
         <Link to="/packages" className="hover:text-[#006680] cursor-pointer">
-          {t("packages")}
+          แพ็กเกจและโปรโมชั่น
         </Link>
         <Link to="/doctor_team" className="hover:text-[#006680] cursor-pointer">
-          {t("team")}
+          ทีมแพทย์
         </Link>
         <Link to="/news" className="hover:text-[#006680] cursor-pointer">
-          {t("news")}
+          ข่าวสารประชาสัมพันธ์
         </Link>
         <Link to="/contact" className="hover:text-[#006680] cursor-pointer">
-          {t("contact")}
+          ติดต่อเรา
         </Link>
       </div>
     </nav>
