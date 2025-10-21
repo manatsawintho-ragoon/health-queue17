@@ -1,8 +1,12 @@
 import React from "react";
 import MainLayout from "../layouts/MainLayout";
 import hospitalImg from "../assets/spu-building.jpg";
+import { doctorCategories } from "../data/doctors";
 
 export default function About() {
+  // รวมหมอทั้งหมดจากทุก category เพื่อโชว์แบบย่อ
+  const allDoctors = doctorCategories.flatMap((cat) => cat.doctors).slice(0, 6);
+
   return (
     <MainLayout>
       {/* Hero Section */}
@@ -17,7 +21,7 @@ export default function About() {
             เกี่ยวกับเรา
           </h1>
           <p className="text-lg md:text-xl text-gray-200">
-            WHOCARE HOSPITAL – เราดูแลคุณด้วยหัวใจ
+            WHOCARE CLINIC – ผู้เชี่ยวชาญด้านการดูแลผิวและความงามครบวงจร
           </p>
         </div>
       </section>
@@ -25,13 +29,13 @@ export default function About() {
       {/* Introduction */}
       <section className="max-w-5xl mx-auto px-6 py-16 text-center">
         <h2 className="text-3xl font-bold text-[#006680] mb-6">
-          โรงพยาบาล WHOCARE คือใคร?
+          WHOCARE CLINIC คือใคร?
         </h2>
         <p className="text-gray-700 leading-relaxed text-lg mb-8">
-          โรงพยาบาล WHOCARE ก่อตั้งขึ้นด้วยเป้าหมายที่จะมอบการดูแลสุขภาพที่ทันสมัย
-          ครบวงจร และเข้าถึงได้สำหรับทุกคน เรามุ่งมั่นพัฒนาเทคโนโลยีทางการแพทย์
-          พร้อมทีมแพทย์ผู้เชี่ยวชาญในทุกสาขา เพื่อให้ผู้ป่วยได้รับการดูแลที่ดีที่สุด
-          ทั้งทางกายและใจ
+          WHOCARE CLINIC ก่อตั้งขึ้นเพื่อมอบการดูแลผิวพรรณและความงามอย่างครบวงจร
+          ตั้งแต่การรักษาสิว การบำรุงผิวหน้า การทำเลเซอร์ ไปจนถึงการปรับรูปหน้าด้วยฟิลเลอร์และโบท็อกซ์
+          ด้วยทีมแพทย์ผู้เชี่ยวชาญเฉพาะทางที่พร้อมให้คำแนะนำและดูแลด้วยความใส่ใจ
+          เพื่อให้ทุกคนได้สัมผัสความมั่นใจและความสวยในแบบของตัวเอง
         </p>
 
         <div className="flex flex-col md:flex-row justify-center items-center gap-8 mt-10">
@@ -40,8 +44,8 @@ export default function About() {
               วิสัยทัศน์ (Vision)
             </h3>
             <p className="text-gray-600 text-base">
-              เป็นผู้นำด้านบริการสุขภาพคุณภาพสูง
-              ที่เน้นความปลอดภัยและความพึงพอใจของผู้รับบริการเป็นหลัก
+              เป็นคลินิกความงามที่ลูกค้ามั่นใจและไว้วางใจที่สุด
+              ด้วยมาตรฐานการรักษาที่ปลอดภัย เทคโนโลยีทันสมัย และผลลัพธ์ที่พิสูจน์ได้จริง
             </p>
           </div>
 
@@ -50,8 +54,9 @@ export default function About() {
               พันธกิจ (Mission)
             </h3>
             <p className="text-gray-600 text-base">
-              ให้บริการด้านสุขภาพด้วยเทคโนโลยีทันสมัย
-              ทีมแพทย์ผู้เชี่ยวชาญ และจิตบริการที่อบอุ่นเพื่อคุณภาพชีวิตที่ดีของทุกคน
+              ให้บริการด้านผิวพรรณและความงามอย่างมืออาชีพ
+              โดยทีมแพทย์ผู้เชี่ยวชาญเฉพาะทาง พร้อมเทคโนโลยีมาตรฐานสากล
+              เพื่อเสริมสร้างความมั่นใจและความสุขในทุกช่วงวัยของคุณ
             </p>
           </div>
         </div>
@@ -69,7 +74,8 @@ export default function About() {
                 ความปลอดภัย
               </h3>
               <p className="text-gray-700">
-                เราให้ความสำคัญกับมาตรฐานความปลอดภัยสูงสุดในทุกขั้นตอนของการดูแล
+                ทุกขั้นตอนของการรักษาอยู่ภายใต้มาตรฐานความปลอดภัยระดับคลินิกมืออาชีพ
+                พร้อมการดูแลอย่างละเอียดอ่อนจากทีมแพทย์ผู้เชี่ยวชาญ
               </p>
             </div>
             <div className="bg-white p-6 rounded-2xl shadow-md hover:shadow-lg transform hover:scale-105 transition duration-300">
@@ -77,7 +83,8 @@ export default function About() {
                 ความเอาใจใส่
               </h3>
               <p className="text-gray-700">
-                เราดูแลผู้ป่วยด้วยความอบอุ่นและเข้าใจ เสมือนคนในครอบครัว
+                เราเชื่อว่าทุกคนมีความงามในแบบของตัวเอง
+                และเราพร้อมดูแลด้วยความอบอุ่นและใส่ใจในทุกรายละเอียด
               </p>
             </div>
             <div className="bg-white p-6 rounded-2xl shadow-md hover:shadow-lg transform hover:scale-105 transition duration-300">
@@ -85,7 +92,8 @@ export default function About() {
                 ความเชี่ยวชาญ
               </h3>
               <p className="text-gray-700">
-                ทีมแพทย์และพยาบาลของเรามีประสบการณ์และความรู้ระดับสากล
+                ทีมแพทย์ของเราเชี่ยวชาญเฉพาะทางในด้านผิวพรรณ เลเซอร์ และความงาม
+                พร้อมอัปเดตเทคโนโลยีใหม่อยู่เสมอเพื่อผลลัพธ์ที่ดีที่สุด
               </p>
             </div>
           </div>
@@ -98,20 +106,20 @@ export default function About() {
           ทีมแพทย์และผู้เชี่ยวชาญของเรา
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {[1, 2, 3].map((num) => (
+          {allDoctors.map((doc, i) => (
             <div
-              key={num}
+              key={i}
               className="bg-white p-6 rounded-2xl shadow-md hover:shadow-lg transform hover:scale-105 transition duration-300"
             >
               <img
-                src={`https://randomuser.me/api/portraits/men/${num + 10}.jpg`}
-                alt="Doctor"
-                className="w-32 h-32 rounded-full mx-auto mb-4 object-cover"
+                src={doc.img}
+                alt={doc.name}
+                className="w-32 h-32 rounded-full mx-auto mb-4 object-cover border-4 border-[#006680]/30"
               />
               <h3 className="text-xl font-semibold text-[#006680]">
-                นพ. สมชาย ตัวอย่าง {num}
+                {doc.name}
               </h3>
-              <p className="text-gray-600 text-sm">แพทย์ผู้เชี่ยวชาญด้านหัวใจ</p>
+              <p className="text-gray-600 text-sm">{doc.specialty}</p>
             </div>
           ))}
         </div>

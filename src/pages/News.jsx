@@ -7,6 +7,9 @@ import extra1 from "../assets/extra1.jpg";
 import extra2 from "../assets/extra2.jpg";
 import extra3 from "../assets/extra3.jpg";
 
+// hero section 
+import heroImg from "../assets/spu-building.jpg";
+
 export default function Information() {
   const [selectedNews, setSelectedNews] = useState(null);
 
@@ -75,19 +78,18 @@ export default function Information() {
   return (
     <MainLayout>
       {/* ส่วน header ด้านบน */}
-      <section
-        className="relative bg-cover bg-center bg-no-repeat text-white py-20 text-center"
-        style={{
-          backgroundImage: `url(${news1})`,
-        }}
-      >
-        <div className="absolute inset-0 bg-[#004f5e]/70 backdrop-brightness-75"></div>
-        <div className="relative z-10">
+      <section className="relative bg-[#e6f3f5]">
+        <img
+          src={heroImg}
+          alt="Page Hero"
+          className="w-full h-[240px] object-cover opacity-70"
+        />
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-white bg-[#004f5e]/80">
           <h1 className="text-4xl font-bold mb-3 tracking-wide drop-shadow-lg">
             ข่าวประชาสัมพันธ์
           </h1>
           <p className="text-lg text-gray-200 drop-shadow-md">
-            ติดตามข่าวสารและกิจกรรมล่าสุดจาก WHOCARE HOSPITAL
+            ติดตามข่าวสารและกิจกรรมล่าสุดจาก WHOCARE CLINIC
           </p>
         </div>
       </section>

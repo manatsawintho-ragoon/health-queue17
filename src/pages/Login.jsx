@@ -101,6 +101,7 @@ export default function Login() {
           citizenId: formData.citizenId,
           birthDate: formData.birthDate.toISOString(),
           email: formData.email,
+          role: "คนไข้",
           createdAt: new Date(),
           photoURL: "https://cdn-icons-png.flaticon.com/512/149/149071.png",
         });
@@ -115,6 +116,17 @@ export default function Login() {
           formData.email,
           formData.password
         );
+        const user = auth.currentUser;
+        if (user) {
+          localStorage.setItem(
+            "user",
+            JSON.stringify({
+              uid: user.uid,
+              email: user.email,
+              displayName: user.displayName,
+            })
+          );
+        }
         Swal.fire({
           icon: "success",
           title: "เข้าสู่ระบบสำเร็จ",
@@ -354,7 +366,7 @@ export default function Login() {
             {/* อีเมล */}
             <div className="col-span-2">
               <label className="text-gray-700 font-medium mb-1 block text-sm">
-                 อีเมล
+                อีเมล
               </label>
               <input
                 type="email"
@@ -369,7 +381,7 @@ export default function Login() {
             {/* รหัสผ่าน */}
             <div className={`${isRegister ? "col-span-1" : "col-span-2"}`}>
               <label className="text-gray-700 font-medium mb-1 block text-sm">
-                 รหัสผ่าน
+                รหัสผ่าน
               </label>
               <input
                 type="password"
@@ -404,7 +416,8 @@ export default function Login() {
                 type="submit"
                 className="bg-[#006680] hover:bg-[#0099b3] text-white font-semibold py-2.5 rounded-md text-base shadow-sm w-full transition cursor-pointer"
               >
-                <i class="fa-solid fa-right-to-bracket"></i> {isRegister ? "สมัครสมาชิก" : "เข้าสู่ระบบ"}
+                <i class="fa-solid fa-right-to-bracket"></i>{" "}
+                {isRegister ? "สมัครสมาชิก" : "เข้าสู่ระบบ"}
               </button>
             </div>
           </form>
@@ -416,7 +429,8 @@ export default function Login() {
               onClick={() => setIsRegister(!isRegister)}
               className="text-[#007b8f] cursor-pointer font-semibold hover:underline"
             >
-              <i class="fa-regular fa-user"></i> {isRegister ? "เข้าสู่ระบบ" : "สมัครสมาชิก"}
+              <i class="fa-regular fa-user"></i>{" "}
+              {isRegister ? "เข้าสู่ระบบ" : "สมัครสมาชิก"}
             </span>
             <div className="mt-2">
               <button

@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import MainLayout from "../layouts/MainLayout";
 
+// hero img 
+import heroImg from "../assets/spu-building.jpg";
+
 export default function Packages() {
   const [activeTab, setActiveTab] = useState("ทั้งหมด");
 
@@ -43,18 +46,19 @@ export default function Packages() {
 
   return (
     <MainLayout>
-      <section className="relative bg-gradient-to-r from-[#005b75] to-[#0288a7] text-white text-center py-20 px-4 overflow-hidden">
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1580281657521-8b79eaf0d66b?auto=format&fit=crop&w=1600&q=80')] bg-cover bg-center opacity-20"></div>
-        <div className="relative z-10">
-          <h1 className="text-5xl font-bold mb-4 drop-shadow-lg">
+      <section className="relative bg-[#e6f3f5]">
+        <img
+          src={heroImg}
+          alt="Page Hero"
+          className="w-full h-[240px] object-cover opacity-70"
+        />
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-white bg-[#004f5e]/80">
+          <h1 className="text-4xl font-bold mb-3 tracking-wide drop-shadow-lg">
             แพ็กเกจและโปรโมชั่น
           </h1>
-          <p className="text-lg opacity-90 mb-6">
+          <p className="text-lg text-gray-200 drop-shadow-md">
             รวมโปรโมชั่นและแพ็กเกจสุขภาพสุดคุ้ม ดูแลคุณครบทุกมิติทั้งกายและใจ
           </p>
-          <button className="mt-2 bg-white text-[#0288a7] font-semibold px-6 py-2 rounded-full hover:bg-[#eaf9fb] transition shadow-md hover:shadow-lg">
-            จองแพ็กเกจตอนนี้
-          </button>
         </div>
       </section>
 
@@ -105,18 +109,6 @@ export default function Packages() {
           </div>
         ))}
       </section>
-
-      <div className="bg-[#ffe082] text-center py-10 rounded-2xl my-10 shadow-md mx-6 max-w-6xl mx-auto animate-pulse-slow">
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">
-          🎉 โปรโมชั่นพิเศษ ลดสูงสุด 30% ถึง 31 ตุลาคมนี้!
-        </h2>
-        <p className="text-gray-700 mb-4">
-          เฉพาะแพ็กเกจตรวจสุขภาพและวัคซีนเท่านั้น
-        </p>
-        <button className="bg-[#0288a7] text-white px-6 py-2 rounded-full font-semibold hover:bg-[#026f86] transition shadow hover:shadow-lg">
-          จองเลย
-        </button>
-      </div>
 
       <div className="bg-gray-50 py-16">
         <div className="max-w-5xl mx-auto text-center px-6">

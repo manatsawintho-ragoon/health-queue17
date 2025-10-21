@@ -14,6 +14,8 @@ import News from "./pages/News.jsx";
 import Contact from "./pages/Contact.jsx";
 import Login from "./pages/Login.jsx";
 import Profile from "./pages/Profile.jsx";
+import DevManager from "./pages/DevManager.jsx";
+import AdminDashboard from "./pages/AdminDashboard.jsx";
 // -----------
 
 createRoot(document.getElementById("root")).render(
@@ -32,6 +34,13 @@ createRoot(document.getElementById("root")).render(
 
         {/* Profile */}
         <Route path="/profile" element={<Profile />} />
+
+        {/* For DEV  */}
+        <Route path="/devmanager" element={<DevManager />} />
+
+        {/* For Admin  */}
+        <Route path="/admindashboard" element={<AdminDashboard />} />
+
 
 
       </Routes>

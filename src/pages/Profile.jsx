@@ -87,9 +87,10 @@ export default function Profile() {
               className="w-28 h-28 rounded-full border-4 border-[#0289a7] shadow-md mb-4"
             />
             <h2 className="text-2xl font-bold text-[#006680]">
-              {userData.fullName}
+              {userData.prefix} {userData.fullName}
             </h2>
             <p className="text-gray-600 text-sm">ผู้ใช้ระบบโรงพยาบาล WHOCARE</p>
+            <p className="text-gray-600 text-sm">สถานะผู้ใช้: {userData.role} </p> 
           </div>
 
           {/* เส้นแบ่ง */}

@@ -19,10 +19,12 @@ export default function Navbar() {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           setUserData(docSnap.data());
+          localStorage.setItem("user", JSON.stringify(docSnap.data())); // ✅ เก็บ role ไว้ใน localStorage ด้วย
         }
       } else {
         setUser(null);
         setUserData(null);
+        localStorage.removeItem("user");
       }
     });
     return () => unsubscribe();
@@ -38,7 +40,7 @@ export default function Navbar() {
     <nav className="bg-[#006680] text-white shadow sticky top-0 z-50">
       {/* แถวบน */}
       <div className="flex items-center justify-between px-6 py-4 relative">
-        {/* โลโก้อยู่ตรงกลาง */}
+        {/* โลโก้ตรงกลาง */}
         <Link
           to="/"
           className="absolute left-1/2 transform -translate-x-1/2 text-center flex flex-col items-center justify-center"
@@ -50,7 +52,7 @@ export default function Navbar() {
         {/* ปุ่มขวา */}
         <div className="flex items-center gap-3 ml-auto relative">
           {user ? (
-            // ถ้าล็อกอินแล้ว → แสดงชื่อผู้ใช้ + dropdown
+            // ถ้าล็อกอินแล้ว
             <div className="relative">
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
@@ -67,9 +69,10 @@ export default function Navbar() {
 
               {menuOpen && (
                 <div
-                  className="absolute right-0 mt-2 w-52 bg-white text-gray-800 rounded-xl shadow-xl overflow-hidden border border-gray-200 animate-fadeIn"
+                  className="absolute right-0 mt-2 w-60 bg-white text-gray-800 rounded-xl shadow-xl overflow-hidden border border-gray-200 animate-fadeIn"
                   onMouseLeave={() => setMenuOpen(false)}
                 >
+                  {/* โปรไฟล์ */}
                   <Link
                     to="/profile"
                     className="block px-5 py-3 text-sm font-medium hover:bg-[#006680] hover:text-white transition-all cursor-pointer"
@@ -79,6 +82,41 @@ export default function Navbar() {
                     โปรไฟล์ของฉัน
                   </Link>
 
+                  {/* ✅ ปุ่มเฉพาะ Role */}
+                  {userData?.role === "ผู้พัฒนา" && (
+                    <Link
+                      to="/DevManager"
+                      className="block px-5 py-3 text-sm font-medium hover:bg-[#006680] hover:text-white transition-all cursor-pointer"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      <i className="fa-solid fa-code mr-2"></i>
+                      Dev Manager
+                    </Link>
+                  )}
+
+                  {(userData?.role === "ผู้พัฒนา" || userData?.role === "แอดมิน") && (
+                    <Link
+                      to="/AdminDashboard"
+                      className="block px-5 py-3 text-sm font-medium hover:bg-[#006680] hover:text-white transition-all cursor-pointer"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      <i className="fa-solid fa-gear mr-2"></i>
+                      Admin Dashboard
+                    </Link>
+                  )}
+
+                  {(userData?.role === "ผู้พัฒนา" || userData?.role === "หมอ") && (
+                    <Link
+                      to="/DoctorPanel"
+                      className="block px-5 py-3 text-sm font-medium hover:bg-[#006680] hover:text-white transition-all cursor-pointer"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      <i className="fa-solid fa-stethoscope mr-2"></i>
+                      Doctor Panel
+                    </Link>
+                  )}
+
+                  {/* ออกจากระบบ */}
                   <button
                     onClick={handleLogout}
                     className="w-full text-left px-5 py-3 text-sm font-medium hover:bg-[#006680] hover:text-white transition-all cursor-pointer"
@@ -90,12 +128,13 @@ export default function Navbar() {
               )}
             </div>
           ) : (
-            // ถ้ายังไม่ล็อกอิน → ปุ่มนัดหมายเข้ารับบริการ
+            // ยังไม่ล็อกอิน
             <Link
               to="/login"
               className="bg-[#0289a7] hover:bg-[#03a9c5] transition px-8 py-3 rounded-full text-sm font-semibold cursor-pointer shadow"
             >
-              <i class="fa-solid fa-right-to-bracket"></i> นัดหมายเข้ารับบริการ
+              <i className="fa-solid fa-right-to-bracket"></i>{" "}
+              นัดหมายเข้ารับบริการ
             </Link>
           )}
         </div>
