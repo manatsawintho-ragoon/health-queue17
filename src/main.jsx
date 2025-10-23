@@ -16,11 +16,16 @@ import Login from "./pages/Login.jsx";
 import Profile from "./pages/Profile.jsx";
 import DevManager from "./pages/DevManager.jsx";
 import AdminDashboard from "./pages/AdminDashboard.jsx";
+import Booking from "./pages/Booking.jsx";
+
+// scrollToTop 
+import ScrollToTop from "./components/ScrollTotop.jsx";
 // -----------
 
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BrowserRouter basename="Whocare">
+      <ScrollToTop />
       <Routes>
 
         <Route path="/" element={<App />} />
@@ -40,6 +45,9 @@ createRoot(document.getElementById("root")).render(
 
         {/* For Admin  */}
         <Route path="/admindashboard" element={<AdminDashboard />} />
+
+        {/* Booking Page */}
+        <Route path="/booking" element={<Booking />} />
 
 
 

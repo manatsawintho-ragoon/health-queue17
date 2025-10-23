@@ -4,6 +4,7 @@ import { db } from "../firebaseConfig";
 import {
   getDocs,
   collection,
+  addDoc,
   updateDoc,
   deleteDoc,
   doc,
@@ -23,6 +24,8 @@ import {
   FaTrash,
   FaEdit,
   FaSyncAlt,
+  FaPlusCircle,
+  FaHotjar,
 } from "react-icons/fa";
 
 export default function AdminDashboard() {
@@ -47,6 +50,19 @@ export default function AdminDashboard() {
   const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = 30;
 
+  // Service states
+  const [services, setServices] = useState([]);
+  const [serviceForm, setServiceForm] = useState({
+    name: "",
+    price: "",
+    description: "",
+    image: "",
+    recommend: false,
+  });
+  const [showServiceModal, setShowServiceModal] = useState(false);
+  const [isEditingService, setIsEditingService] = useState(false);
+  const [editServiceId, setEditServiceId] = useState(null);
+
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem("user"));
     if (
@@ -64,18 +80,24 @@ export default function AdminDashboard() {
     setCurrentUser(userData);
     fetchStats();
     fetchUsers();
+    fetchServices();
   }, [navigate]);
 
   const fetchStats = async () => {
     try {
       setLoading(true);
       const usersSnapshot = await getDocs(collection(db, "users"));
+
+      const patients = usersSnapshot.docs.filter(
+        (d) => d.data().role === "คนไข้"
+      ).length;
       const doctors = usersSnapshot.docs.filter(
         (d) => d.data().role === "หมอ"
       ).length;
       const admins = usersSnapshot.docs.filter(
         (d) => d.data().role === "แอดมิน"
       ).length;
+
       const servicesSnapshot = await getDocs(collection(db, "services"));
       const packagesSnapshot = await getDocs(collection(db, "packages"));
       const appointmentsSnapshot = await getDocs(
@@ -83,7 +105,7 @@ export default function AdminDashboard() {
       );
 
       setStats({
-        users: usersSnapshot.size,
+        users: patients,
         doctors,
         admins,
         services: servicesSnapshot.size,
@@ -113,6 +135,17 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchServices = async () => {
+    try {
+      const snapshot = await getDocs(collection(db, "services"));
+      const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      setServices(list);
+    } catch (err) {
+      console.error("Error fetching services:", err);
+    }
+  };
+
+  // User actions
   const updateRole = async (id, newRole) => {
     try {
       await updateDoc(doc(db, "users", id), { role: newRole });
@@ -177,6 +210,103 @@ export default function AdminDashboard() {
     }
   };
 
+  // Service actions
+  const handleAddService = async () => {
+    if (!serviceForm.name || !serviceForm.price || !serviceForm.image) {
+      Swal.fire("แจ้งเตือน", "กรุณากรอกข้อมูลให้ครบ", "warning");
+      return;
+    }
+
+    try {
+      await addDoc(collection(db, "services"), {
+        name: serviceForm.name,
+        price: Number(serviceForm.price),
+        description: serviceForm.description,
+        image: serviceForm.image,
+        recommend: Boolean(serviceForm.recommend),
+        createdAt: new Date(),
+      });
+
+      Swal.fire("เพิ่มบริการสำเร็จ!", "ข้อมูลถูกบันทึกแล้ว", "success");
+      setServiceForm({
+        name: "",
+        price: "",
+        description: "",
+        image: "",
+        recommend: false,
+      });
+      setShowServiceModal(false);
+      fetchServices();
+    } catch (error) {
+      Swal.fire("เกิดข้อผิดพลาด!", error.message || String(error), "error");
+    }
+  };
+
+  const handleEditService = (service) => {
+    setIsEditingService(true);
+    setEditServiceId(service.id);
+    setServiceForm({
+      name: service.name,
+      price: service.price,
+      description: service.description,
+      image: service.image,
+      recommend: service.recommend,
+    });
+    setShowServiceModal(true);
+  };
+
+  const handleUpdateService = async () => {
+    Swal.fire({
+      title: "ยืนยันการแก้ไข?",
+      text: "ตรวจสอบข้อมูลก่อนบันทึก",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#0288d1",
+      cancelButtonColor: "#aaa",
+      confirmButtonText: "บันทึก",
+      cancelButtonText: "ยกเลิก",
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          await updateDoc(doc(db, "services", editServiceId), {
+            ...serviceForm,
+            price: Number(serviceForm.price),
+          });
+          Swal.fire("สำเร็จ!", "ข้อมูลถูกอัปเดตแล้ว", "success");
+          setIsEditingService(false);
+          setShowServiceModal(false);
+          fetchServices();
+        } catch (err) {
+          Swal.fire("เกิดข้อผิดพลาด!", err.message || String(err), "error");
+        }
+      }
+    });
+  };
+
+  const deleteService = async (id) => {
+    Swal.fire({
+      title: "ต้องการลบบริการนี้?",
+      text: "การกระทำนี้ไม่สามารถย้อนกลับได้",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#0288d1",
+      confirmButtonText: "ลบ",
+      cancelButtonText: "ยกเลิก",
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          await deleteDoc(doc(db, "services", id));
+          Swal.fire("ลบสำเร็จ!", "บริการถูกลบออกแล้ว", "success");
+          fetchServices();
+        } catch (error) {
+          Swal.fire("เกิดข้อผิดพลาด!", error.message || String(error), "error");
+        }
+      }
+    });
+  };
+
+  // Tabs: users / doctors / admins
   const filteredUsers = useMemo(() => {
     let list = users;
     if (activeTab === "users") list = list.filter((u) => u.role === "คนไข้");
@@ -207,7 +337,7 @@ export default function AdminDashboard() {
         <button
           onClick={fetchUsers}
           disabled={refreshing}
-          className={`flex items-center gap-2 bg-[#0288d1] text-white px-4 py-2 rounded-full font-medium shadow-sm ${
+          className={`flex items-center gap-2 bg-[#0288d1] text-white px-4 py-2 rounded-full font-medium shadow-sm cursor-pointer ${
             refreshing ? "opacity-70 cursor-wait" : "hover:bg-[#0277bd]"
           }`}
         >
@@ -259,13 +389,13 @@ export default function AdminDashboard() {
 
                 <button
                   onClick={() => handleEdit(u)}
-                  className="flex items-center gap-1 bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm font-medium shadow-sm"
+                  className="flex items-center gap-1 bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-md text-sm font-medium shadow-sm cursor-pointer"
                 >
                   <FaEdit size={15} /> แก้ไข
                 </button>
                 <button
                   onClick={() => deleteUser(u.id)}
-                  className="flex items-center gap-1 bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-md text-sm font-medium shadow-sm"
+                  className="flex items-center gap-1 bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-md text-sm font-medium shadow-sm cursor-pointer"
                 >
                   <FaTrash size={15} /> ลบ
                 </button>
@@ -278,36 +408,229 @@ export default function AdminDashboard() {
           </p>
         )}
       </div>
+    </div>
+  );
 
-      {totalPages > 1 && (
-        <div className="flex justify-center mt-6 gap-3 text-sm font-medium">
+  const recommendedServices = services.filter((s) => s.recommend === true);
+  const normalServices = services.filter((s) => !s.recommend);
+
+  const renderManageServices = () => (
+    <div className="max-w-5xl mx-auto">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-2xl font-bold text-[#0288d1]">จัดการบริการ</h2>
+        <button
+          onClick={() => {
+            setIsEditingService(false);
+            setShowServiceModal(true);
+            setServiceForm({
+              name: "",
+              price: "",
+              description: "",
+              image: "",
+              recommend: false,
+            });
+          }}
+          className="flex items-center gap-2 bg-[#0288d1] text-white px-4 py-2 rounded-full font-medium shadow  hover:bg-[#0277bd] cursor-pointer"
+        >
+          <FaPlusCircle /> เพิ่มบริการใหม่
+        </button>
+      </div>
+
+      {/* บริการแนะนำ */}
+      <div className="bg-white rounded-2xl shadow-md border border-gray-100 mb-8">
+        <h3 className="flex text-xl font-semibold text-[#ff0000] px-4 pt-4 gap-2">
+          <FaHotjar />
+          บริการแนะนำ{" "}
+        </h3>
+        {recommendedServices.length > 0 ? (
+          recommendedServices.map((s) => (
+            <div
+              key={s.id}
+              className="flex justify-between items-center py-3 px-4 border-b border-gray-100 hover:bg-gray-50"
+            >
+              <div className="flex gap-4 items-center">
+                {s.image && (
+                  <img
+                    src={s.image}
+                    alt={s.name}
+                    className="w-16 h-16 object-cover rounded-lg border"
+                  />
+                )}
+                <div>
+                  <p className="font-semibold text-gray-800">{s.name}</p>
+                  <p className="text-sm text-gray-500">{s.description}</p>
+                  <p className="text-sm text-sky-700 font-semibold">
+                    ราคา: {s.price} บาท
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleEditService(s)}
+                  className="flex items-center gap-1 bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-md text-sm font-medium shadow-sm cursor-pointer"
+                >
+                  <FaEdit size={15} /> แก้ไข
+                </button>
+                <button
+                  onClick={() => deleteService(s.id)}
+                  className="flex items-center gap-1 bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-md text-sm font-medium shadow-sm cursor-pointer"
+                >
+                  <FaTrash size={15} /> ลบ
+                </button>
+              </div>
+            </div>
+          ))
+        ) : (
+          <p className="text-center text-gray-500 text-sm py-6">
+            ไม่มีบริการแนะนำ
+          </p>
+        )}
+      </div>
+
+      {/* บริการทั่วไป */}
+      <div className="bg-white rounded-2xl shadow-md border border-gray-100">
+        <h3 className="text-xl font-semibold text-[#0288d1] px-4 pt-4">
+          บริการทั่วไป
+        </h3>
+        {normalServices.length > 0 ? (
+          normalServices.map((s) => (
+            <div
+              key={s.id}
+              className="flex justify-between items-center py-3 px-4 border-b border-gray-100 hover:bg-gray-50"
+            >
+              <div className="flex gap-4 items-center">
+                {s.image && (
+                  <img
+                    src={s.image}
+                    alt={s.name}
+                    className="w-16 h-16 object-cover rounded-lg border"
+                  />
+                )}
+                <div>
+                  <p className="font-semibold text-gray-800">{s.name}</p>
+                  <p className="text-sm text-gray-500">{s.description}</p>
+                  <p className="text-sm text-sky-700 font-semibold">
+                    ราคา: {s.price} บาท
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleEditService(s)}
+                  className="flex items-center gap-1 bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-md text-sm font-medium shadow-sm cursor-pointer"
+                >
+                  <FaEdit size={15} /> แก้ไข
+                </button>
+                <button
+                  onClick={() => deleteService(s.id)}
+                  className="flex items-center gap-1 bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-md text-sm font-medium shadow-sm cursor-pointer"
+                >
+                  <FaTrash size={15} /> ลบ
+                </button>
+              </div>
+            </div>
+          ))
+        ) : (
+          <p className="text-center text-gray-500 text-sm py-6">
+            ไม่มีบริการทั่วไป
+          </p>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderServiceModal = () => (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl p-6 w-[420px] shadow-2xl border-t-4 border-[#0288d1]">
+        <h3 className="text-xl font-bold text-[#0288d1] mb-4 text-center">
+          {isEditingService ? "แก้ไขบริการ" : "เพิ่มบริการใหม่"}
+        </h3>
+
+        <div className="space-y-3">
+          <div>
+            <label className="text-sm font-medium">ชื่อบริการ:</label>
+            <input
+              type="text"
+              value={serviceForm.name}
+              onChange={(e) =>
+                setServiceForm({ ...serviceForm, name: e.target.value })
+              }
+              className="border w-full p-2 rounded"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium">รายละเอียด:</label>
+            <textarea
+              value={serviceForm.description}
+              onChange={(e) =>
+                setServiceForm({ ...serviceForm, description: e.target.value })
+              }
+              className="border w-full p-2 rounded"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium">ราคา (บาท):</label>
+            <input
+              type="number"
+              value={serviceForm.price}
+              onChange={(e) =>
+                setServiceForm({ ...serviceForm, price: e.target.value })
+              }
+              className="border w-full p-2 rounded"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium">URL รูปภาพ:</label>
+            <input
+              type="text"
+              value={serviceForm.image}
+              onChange={(e) =>
+                setServiceForm({ ...serviceForm, image: e.target.value })
+              }
+              className="border w-full p-2 rounded"
+              placeholder="https://example.com/image.jpg"
+            />
+            {serviceForm.image && (
+              <img
+                src={serviceForm.image}
+                alt="preview"
+                className="w-32 h-32 object-cover rounded-lg border mt-2"
+              />
+            )}
+          </div>
+          <div>
+            <label className="text-sm font-medium">ประเภทบริการ:</label>
+            <select
+              value={serviceForm.recommend ? "true" : "false"}
+              onChange={(e) =>
+                setServiceForm({
+                  ...serviceForm,
+                  recommend: e.target.value === "true",
+                })
+              }
+              className="border w-full p-2 rounded"
+            >
+              <option value="false">บริการทั่วไป</option>
+              <option value="true">บริการแนะนำมาใหม่!! (แสดงหน้าหลัก)</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 mt-5">
           <button
-            disabled={page === 1}
-            onClick={() => setPage(page - 1)}
-            className={`px-3 py-1 rounded-md border ${
-              page === 1
-                ? "text-gray-400 border-gray-200"
-                : "text-[#0288d1] border-[#0288d1] hover:bg-sky-50"
-            }`}
+            onClick={() => setShowServiceModal(false)}
+            className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400"
           >
-            ก่อนหน้า
+            ยกเลิก
           </button>
-          <span className="text-gray-600">
-            หน้า {page} จาก {totalPages}
-          </span>
           <button
-            disabled={page === totalPages}
-            onClick={() => setPage(page + 1)}
-            className={`px-3 py-1 rounded-md border ${
-              page === totalPages
-                ? "text-gray-400 border-gray-200"
-                : "text-[#0288d1] border-[#0288d1] hover:bg-sky-50"
-            }`}
+            onClick={isEditingService ? handleUpdateService : handleAddService}
+            className="bg-[#0288d1] text-white px-4 py-2 rounded hover:bg-[#0277bd]"
           >
-            ถัดไป
+            {isEditingService ? "บันทึกการแก้ไข" : "บันทึก"}
           </button>
         </div>
-      )}
+      </div>
     </div>
   );
 
@@ -346,7 +669,7 @@ export default function AdminDashboard() {
                 { icon: <FaWrench />, label: "บริการ", value: stats.services },
                 {
                   icon: <FaBoxOpen />,
-                  label: "แพ็กเกจ",
+                  label: "สร้างโค้ดส่วนลด",
                   value: stats.packages,
                 },
                 {
@@ -371,14 +694,14 @@ export default function AdminDashboard() {
             </div>
           </>
         );
-
       case "users":
         return renderManageSection("จัดการคนไข้");
       case "doctors":
         return renderManageSection("จัดการหมอ");
       case "admins":
         return renderManageSection("จัดการแอดมิน");
-
+      case "services":
+        return renderManageServices();
       default:
         return (
           <div className="text-center text-gray-600 mt-10">
@@ -418,16 +741,15 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Tabs */}
         <div className="flex flex-wrap justify-center gap-3 mb-10">
           {[
             { key: "overview", label: "ภาพรวม", icon: <FaHome /> },
             { key: "admins", label: "จัดการแอดมิน", icon: <FaUserShield /> },
             { key: "doctors", label: "จัดการหมอ", icon: <FaUserMd /> },
             { key: "users", label: "จัดการคนไข้", icon: <FaUsers /> },
-            { key: "services", label: "บริการ", icon: <FaWrench /> },
-            { key: "packages", label: "แพ็กเกจ", icon: <FaBoxOpen /> },
-            { key: "appointments", label: "คิว", icon: <FaClipboardList /> },
+            { key: "services", label: "จัดการบริการ", icon: <FaWrench /> },
+            { key: "packages", label: "สร้างโค้ดส่วนลด", icon: <FaBoxOpen /> },
+            { key: "appointments", label: "จัดการระบบคิว", icon: <FaClipboardList /> },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -448,15 +770,12 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {/* Content */}
         {renderContent()}
-
-        {/* Modal */}
         {showModal && editUser && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
             <div className="bg-white rounded-2xl p-6 w-[420px] shadow-2xl border-t-4 border-[#0288d1]">
               <h3 className="text-xl font-bold text-[#0288d1] mb-4 text-center">
-                แก้ไขข้อมูลคนไข้
+                แก้ไขข้อมูลผู้ใช้
               </h3>
 
               <div className="space-y-3">
@@ -534,6 +853,8 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
+
+        {showServiceModal && renderServiceModal()}
       </div>
     </MainLayout>
   );
