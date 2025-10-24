@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, forwardRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { db } from "../firebaseConfig";
 import {
@@ -7,7 +7,6 @@ import {
   updateDoc,
   deleteDoc,
   doc,
-  addDoc,
 } from "firebase/firestore";
 import Swal from "sweetalert2";
 import MainLayout from "../layouts/MainLayout";
@@ -20,12 +19,14 @@ import {
   FaEdit,
   FaSyncAlt,
   FaSearch,
-  FaUserCircle,
-  FaWrench,
-  FaPlus,
   FaSave,
   FaTimes,
 } from "react-icons/fa";
+import DatePicker, { registerLocale } from "react-datepicker";
+import th from "date-fns/locale/th";
+import "react-datepicker/dist/react-datepicker.css";
+import placeholderImg from "../assets/WHOCARE-logo.png";
+registerLocale("th", th);
 
 export default function DevManager() {
   const navigate = useNavigate();
@@ -112,33 +113,58 @@ export default function DevManager() {
     });
   };
 
+  // ✅ handleEdit (เหมือน AdminDashboard)
   const handleEdit = (user) => {
-    // normalize to include new fields so inputs are controlled
     const normalized = {
       prefix: user.prefix || "",
       citizenId: user.citizenId || "",
       photoUrl: user.photoUrl || "",
       department: user.department || "",
+      description: user.description || "",
+      birthDate: (() => {
+        if (!user.birthDate) return null;
+        try {
+          if (user.birthDate?.toDate) return user.birthDate.toDate();
+          if (typeof user.birthDate === "string")
+            return new Date(user.birthDate);
+          if (user.birthDate?.seconds)
+            return new Date(user.birthDate.seconds * 1000);
+          return new Date(user.birthDate);
+        } catch {
+          return null;
+        }
+      })(),
       ...user,
     };
     setEditUser(normalized);
     setShowModal(true);
   };
 
+  //  saveEdit (เหมือน AdminDashboard)
   const saveEdit = async () => {
     try {
       const docRef = doc(db, "users", editUser.id);
+
+      const formattedBirthDate =
+        editUser.birthDate instanceof Date
+          ? editUser.birthDate.toISOString()
+          : editUser.birthDate && editUser.birthDate.seconds
+          ? new Date(editUser.birthDate.seconds * 1000).toISOString()
+          : "";
+
       await updateDoc(docRef, {
         fullName: editUser.fullName,
         email: editUser.email,
         gender: editUser.gender,
         role: editUser.role,
-        // new fields
         prefix: editUser.prefix || "",
         citizenId: editUser.citizenId || "",
         photoUrl: editUser.photoUrl || "",
         department: editUser.department || "",
+        description: editUser.description || "",
+        birthDate: formattedBirthDate,
       });
+
       Swal.fire({
         icon: "success",
         title: "บันทึกการแก้ไขแล้ว",
@@ -148,10 +174,11 @@ export default function DevManager() {
       fetchUsers();
     } catch (err) {
       console.error("Error saving edit:", err);
+      Swal.fire("เกิดข้อผิดพลาด!", err.message || String(err), "error");
     }
   };
 
-  // ------------- FILTER + PAGINATION LOGIC ----------------
+  // ✅ Filter + Pagination
   const filteredUsers = useMemo(() => {
     if (searchTerm.trim() !== "") {
       return users.filter(
@@ -197,9 +224,6 @@ export default function DevManager() {
   return (
     <MainLayout>
       <div className="min-h-screen bg-gradient-to-b from-[#e3f2fd] to-white py-14 px-8">
-        {/* Current User Display (กลางบน) */}
-
-        {/* Header */}
         <div className="text-center mb-6">
           <h1 className="text-4xl font-extrabold text-[#006680] mb-2">
             Dev Manager Dashboard
@@ -209,6 +233,7 @@ export default function DevManager() {
           </p>
         </div>
 
+        {/* ผู้พัฒนา */}
         {currentUser && (
           <div className="flex justify-center mb-8">
             <div className="bg-white shadow-md border border-gray-100 rounded-2xl py-3 px-6 flex items-center gap-3">
@@ -225,7 +250,7 @@ export default function DevManager() {
           </div>
         )}
 
-        {/* Role Selector */}
+        {/* ปุ่มเลือกบทบาท */}
         <div className="flex flex-wrap justify-center gap-3 mb-8">
           {roleOrder.map((role) => (
             <button
@@ -247,7 +272,7 @@ export default function DevManager() {
           ))}
         </div>
 
-        {/* Search + Refresh */}
+        {/* ค้นหา + รีเฟรช */}
         <div className="flex flex-col md:flex-row items-center justify-center gap-3 mb-10">
           <div className="flex items-center bg-white shadow-md rounded-full px-3 py-1 border border-gray-200 w-full md:w-1/3">
             <FaSearch className="text-gray-400 mr-2" />
@@ -281,7 +306,7 @@ export default function DevManager() {
           </button>
         </div>
 
-        {/* User List */}
+        {/* รายชื่อผู้ใช้ */}
         <div
           className={`rounded-3xl shadow-xl border border-gray-100 bg-gradient-to-br ${roleColors[activeRole]} text-white max-w-5xl mx-auto`}
         >
@@ -297,13 +322,25 @@ export default function DevManager() {
               currentUsers.map((u) => (
                 <div
                   key={u.id}
-                  className="flex justify-between items-center py-3 border-b border-gray-100 hover:bg-gray-50 rounded-lg transition"
+                  className="flex justify-between text-center items-center py-3 border-b border-gray-100 hover:bg-gray-50 rounded-lg transition"
                 >
+                  <img
+                    src={u.photoUrl || placeholderImg}
+                    alt="profile"
+                    className="w-12 h-12 rounded-full object-cover border border-gray-300 shadow-sm"
+                  />
                   <div>
                     <p className="font-semibold text-gray-800">
-                      {u.prefix + " " + u.fullName || "ไม่ระบุชื่อ"}
+                      {`${u.prefix || ""} ${u.fullName || "ไม่ระบุชื่อ"}`}
                     </p>
                     <p className="text-xs text-gray-500">{u.email}</p>
+                    {u.role === "หมอ" && (
+                      <>
+                        <p className="text-xs text-[#0288d1] font-medium mt-0.5">
+                          แผนก: {u.department}
+                        </p>
+                      </>
+                    )}
                   </div>
                   <div className="flex items-center gap-3">
                     <select
@@ -340,215 +377,431 @@ export default function DevManager() {
           </div>
         </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex justify-center mt-6 gap-3 text-sm font-medium">
-            <button
-              disabled={page === 1}
-              onClick={() => setPage(page - 1)}
-              className={`px-3 py-1 rounded-md border ${
-                page === 1
-                  ? "text-gray-400 border-gray-200"
-                  : "text-[#0288d1] border-[#0288d1] hover:bg-sky-50"
-              }`}
-            >
-              ก่อนหน้า
-            </button>
-            <span className="text-gray-600">
-              หน้า {page} จาก {totalPages}
-            </span>
-            <button
-              disabled={page === totalPages}
-              onClick={() => setPage(page + 1)}
-              className={`px-3 py-1 rounded-md border ${
-                page === totalPages
-                  ? "text-gray-400 border-gray-200"
-                  : "text-[#0288d1] border-[#0288d1] hover:bg-sky-50"
-              }`}
-            >
-              ถัดไป
-            </button>
-          </div>
-        )}
-
-        {/* Modal (REPLACED: upgraded modal matching AdminDashboard style) */}
+        {/* Modal */}
         {showModal && editUser && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fadeIn">
-            <div className="bg-white rounded-3xl p-8 w-[750px] shadow-2xl border border-[#0288d1]/30">
-              <h3 className="flex items-center justify-center gap-2 text-2xl font-extrabold text-[#0288d1] mb-6">
-                <FaUserCog /> แก้ไขข้อมูลผู้ใช้
-              </h3>
-
-              {/* Layout 2 คอลัมน์ */}
-              <div className="grid grid-cols-2 gap-x-8 gap-y-5">
-                <div>
-                  <label className="text-sm font-semibold text-gray-700">
-                    คำนำหน้า:
-                  </label>
-                  <select
-                    value={editUser.prefix || ""}
-                    onChange={(e) =>
-                      setEditUser({ ...editUser, prefix: e.target.value })
-                    }
-                    className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
-                  >
-                    <option value="">เลือกคำนำหน้า</option>
-                    <option value="นาย">นาย</option>
-                    <option value="นาง">นาง</option>
-                    <option value="นางสาว">นางสาว</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-sm font-semibold text-gray-700">
-                    ชื่อเต็ม:
-                  </label>
-                  <input
-                    type="text"
-                    value={editUser.fullName || ""}
-                    onChange={(e) =>
-                      setEditUser({ ...editUser, fullName: e.target.value })
-                    }
-                    className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm font-semibold text-gray-700">
-                    เลขบัตรประชาชน (13 หลัก):
-                  </label>
-                  <input
-                    type="text"
-                    value={editUser.citizenId || ""}
-                    onChange={(e) =>
-                      setEditUser({ ...editUser, citizenId: e.target.value })
-                    }
-                    maxLength={13}
-                    pattern="\\d{13}"
-                    placeholder="กรอกเลขบัตรประชาชน 13 หลัก"
-                    className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm font-semibold text-gray-700">
-                    อีเมล:
-                  </label>
-                  <input
-                    type="email"
-                    value={editUser.email || ""}
-                    onChange={(e) =>
-                      setEditUser({ ...editUser, email: e.target.value })
-                    }
-                    className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm font-semibold text-gray-700">
-                    เพศ:
-                  </label>
-                  <select
-                    value={editUser.gender || ""}
-                    onChange={(e) =>
-                      setEditUser({ ...editUser, gender: e.target.value })
-                    }
-                    className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
-                  >
-                    <option value="">เลือกเพศ</option>
-                    <option value="ชาย">ชาย</option>
-                    <option value="หญิง">หญิง</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-sm font-semibold text-gray-700">
-                    รูปภาพ (URL):
-                  </label>
-                  <input
-                    type="text"
-                    value={editUser.photoUrl || ""}
-                    onChange={(e) =>
-                      setEditUser({ ...editUser, photoUrl: e.target.value })
-                    }
-                    placeholder="https://example.com/profile.jpg"
-                    className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
-                  />
-                  {editUser.photoUrl && (
-                    <div className="mt-3">
-                      <img
-                        src={editUser.photoUrl}
-                        alt="preview"
-                        className="w-full max-h-[300px] object-contain rounded-2xl border-2 border-[#0288d1]/30 shadow-sm"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {editUser.role === "หมอ" && (
-                  <div className="col-span-2">
-                    <label className="text-sm font-semibold text-gray-700">
-                      แผนก:
-                    </label>
-                    <select
-                      value={editUser.department || ""}
-                      onChange={(e) =>
-                        setEditUser({ ...editUser, department: e.target.value })
-                      }
-                      className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
-                    >
-                      <option value="">เลือกแผนก</option>
-                      <option value="รักษาสิวครบวงจร">รักษาสิวครบวงจร</option>
-                      <option value="ทรีตเมนต์บำรุงผิวหน้า">
-                        ทรีตเมนต์บำรุงผิวหน้า
-                      </option>
-                      <option value="เลเซอร์หน้าใส">เลเซอร์หน้าใส</option>
-                      <option value="ฟิลเลอร์ & โบท็อกซ์">
-                        ฟิลเลอร์ & โบท็อกซ์
-                      </option>
-                    </select>
-                  </div>
-                )}
-
-                <div className="col-span-2">
-                  <label className="text-sm font-semibold text-gray-700">
-                    บทบาท:
-                  </label>
-                  <select
-                    value={editUser.role || ""}
-                    onChange={(e) =>
-                      setEditUser({ ...editUser, role: e.target.value })
-                    }
-                    className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
-                  >
-                    {roleOrder.map((r) => (
-                      <option key={r} value={r}>
-                        {r}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* ปุ่ม */}
-              <div className="flex justify-end gap-3 mt-8 pt-5">
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="flex items-center gap-2 bg-gray-300 text-gray-700 px-5 py-2 rounded-lg hover:bg-gray-400 cursor-pointer transition font-medium"
-                >
-                  <FaTimes /> ยกเลิก
-                </button>
-                <button
-                  onClick={saveEdit}
-                  className="flex items-center gap-2 bg-[#0288d1] text-white px-6 py-2 rounded-lg hover:bg-[#0277bd] cursor-pointer transition font-semibold shadow-md"
-                >
-                  <FaSave /> บันทึก
-                </button>
-              </div>
-            </div>
-          </div>
+          <>
+            {editUser.role === "หมอ" ? (
+              <DoctorModal
+                handleClose={() => setShowModal(false)}
+                editUser={editUser}
+                setEditUser={setEditUser}
+                handleSave={saveEdit}
+              />
+            ) : (
+              <NormalModal
+                handleClose={() => setShowModal(false)}
+                editUser={editUser}
+                setEditUser={setEditUser}
+                handleSave={saveEdit}
+              />
+            )}
+          </>
         )}
       </div>
     </MainLayout>
+  );
+}
+
+/* ---------------------- Modal components (เหมือน AdminDashboard.jsx) ---------------------- */
+const CustomInput = forwardRef(({ value, onClick }, ref) => {
+  const formatDateToThai = (val) => {
+    if (!val) return "";
+    const d = new Date(val);
+    if (isNaN(d)) return "";
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear() + 543;
+    return `${day}/${month}/${year}`;
+  };
+  return (
+    <input
+      readOnly
+      ref={ref}
+      onClick={onClick}
+      value={formatDateToThai(value)}
+      placeholder="เลือกวันเดือนปีเกิด"
+      className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full focus:ring-2 focus:ring-[#0288d1] outline-none bg-white cursor-pointer"
+    />
+  );
+});
+function DatePickerInput({ label, value, onChange, CustomInput: CI }) {
+  const months = [
+    "มกราคม",
+    "กุมภาพันธ์",
+    "มีนาคม",
+    "เมษายน",
+    "พฤษภาคม",
+    "มิถุนายน",
+    "กรกฎาคม",
+    "สิงหาคม",
+    "กันยายน",
+    "ตุลาคม",
+    "พฤศจิกายน",
+    "ธันวาคม",
+  ];
+  const years = Array.from(
+    { length: 101 },
+    (_, i) => new Date().getFullYear() - i
+  );
+
+  return (
+    <div>
+      {label && (
+        <label className="text-sm font-semibold text-gray-700">{label}</label>
+      )}
+      <DatePicker
+        selected={value ? new Date(value) : null}
+        onChange={onChange}
+        locale={th}
+        dateFormat="dd/MM/yyyy"
+        showMonthDropdown
+        showYearDropdown
+        dropdownMode="select"
+        maxDate={new Date()}
+        customInput={<CI />}
+        renderCustomHeader={({ date, changeYear, changeMonth }) => (
+          <div className="flex justify-center gap-3 items-center p-2">
+            <select
+              value={months[date.getMonth()]}
+              onChange={({ target: { value } }) =>
+                changeMonth(months.indexOf(value))
+              }
+              className="border border-gray-300 rounded px-2 py-1 text-sm"
+            >
+              {months.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+            <select
+              value={date.getFullYear() + 543}
+              onChange={({ target: { value } }) =>
+                changeYear(Number(value) - 543)
+              }
+              className="border border-gray-300 rounded px-2 py-1 text-sm"
+            >
+              {years.map((y) => (
+                <option key={y} value={y + 543}>
+                  {y + 543}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      />
+    </div>
+  );
+}
+
+/* ======================= NormalModal ======================= */
+function NormalModal({ handleClose, editUser, setEditUser, handleSave }) {
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fadeIn"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) handleClose();
+      }}
+    >
+      <div className="bg-white rounded-3xl p-6 w-[500px] shadow-2xl border border-[#0288d1]/30">
+        <h3 className="flex items-center justify-center gap-2 text-xl font-extrabold text-[#0288d1] mb-4">
+          <FaEdit /> แก้ไขข้อมูลผู้ใช้
+        </h3>
+
+        <div className="grid grid-cols-2 gap-x-5 gap-y-3">
+          <div>
+            <label className="text-sm font-semibold text-gray-700">
+              คำนำหน้า:
+            </label>
+            <select
+              value={editUser.prefix || ""}
+              onChange={(e) => {
+                const value = e.target.value;
+                let inferredGender = editUser.gender;
+                if (value === "นาย") inferredGender = "ชาย";
+                else if (value === "นาง" || value === "นางสาว")
+                  inferredGender = "หญิง";
+                setEditUser({
+                  ...editUser,
+                  prefix: value,
+                  gender: inferredGender,
+                });
+              }}
+              className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+            >
+              <option value="">เลือกคำนำหน้า</option>
+              <option value="นาย">นาย</option>
+              <option value="นาง">นาง</option>
+              <option value="นางสาว">นางสาว</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-sm font-semibold text-gray-700">
+              ชื่อเต็ม:
+            </label>
+            <input
+              type="text"
+              value={editUser.fullName || ""}
+              onChange={(e) =>
+                setEditUser({ ...editUser, fullName: e.target.value })
+              }
+              className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-semibold text-gray-700">
+              วันเดือนปีเกิด:
+            </label>
+            <DatePickerInput
+              label=""
+              value={editUser.birthDate}
+              onChange={(date) => setEditUser({ ...editUser, birthDate: date })}
+              CustomInput={CustomInput}
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-semibold text-gray-700">
+              เลขบัตรประชาชน (13 หลัก):
+            </label>
+            <input
+              type="text"
+              value={editUser.citizenId || ""}
+              onChange={(e) =>
+                setEditUser({ ...editUser, citizenId: e.target.value })
+              }
+              maxLength={13}
+              pattern="\\d{13}"
+              placeholder="กรอกเลขบัตรประชาชน 13 หลัก"
+              className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-semibold text-gray-700">
+              อีเมล:
+            </label>
+            <input
+              type="email"
+              value={editUser.email || ""}
+              onChange={(e) =>
+                setEditUser({ ...editUser, email: e.target.value })
+              }
+              className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-semibold text-gray-700">
+              รูปภาพ (URL):
+            </label>
+            <input
+              type="text"
+              value={editUser.photoUrl || ""}
+              onChange={(e) =>
+                setEditUser({ ...editUser, photoUrl: e.target.value })
+              }
+              placeholder="https://example.com/profile.jpg"
+              className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+            />
+          </div>
+
+          {editUser.photoUrl && (
+            <div className="col-span-2">
+              <div className="mt-3 flex justify-center">
+                <img
+                  src={editUser.photoUrl}
+                  alt="preview"
+                  className="w-full max-h-[300px] object-contain rounded-2xl border-2 border-[#0288d1]/30 shadow-sm"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-3 mt-6 pt-4">
+          <button
+            onClick={handleClose}
+            className="flex items-center gap-2 bg-gray-300 text-gray-700 px-5 py-2 rounded-lg hover:bg-gray-400 cursor-pointer transition font-medium"
+          >
+            <FaTimes /> ยกเลิก
+          </button>
+          <button
+            onClick={handleSave}
+            className="flex items-center gap-2 bg-[#0288d1] text-white px-6 py-2 rounded-lg hover:bg-[#0277bd] cursor-pointer transition font-semibold shadow-md"
+          >
+            <FaSave /> บันทึก
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ======================= DoctorModal ======================= */
+function DoctorModal({ handleClose, editUser, setEditUser, handleSave }) {
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fadeIn"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) handleClose();
+      }}
+    >
+      <div className="bg-white rounded-3xl p-6 w-[820px] shadow-2xl border border-[#0288d1]/30 grid grid-cols-2 gap-x-8">
+        <div className="space-y-3">
+          <h3 className="flex items-center gap-2 text-xl font-extrabold text-[#0288d1] mb-2">
+            <FaEdit /> ข้อมูลทั่วไป
+          </h3>
+
+          <div>
+            <label className="text-sm font-semibold text-gray-700">
+              คำนำหน้า:
+            </label>
+            <select
+              value={editUser.prefix || ""}
+              onChange={(e) => {
+                const value = e.target.value;
+                let inferredGender = editUser.gender;
+                if (value === "นพ.") inferredGender = "ชาย";
+                else if (value === "พญ.") inferredGender = "หญิง";
+                setEditUser({
+                  ...editUser,
+                  prefix: value,
+                  gender: inferredGender,
+                });
+              }}
+              className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+            >
+              <option value="">เลือกคำนำหน้า</option>
+              <option value="นพ.">นพ.</option>
+              <option value="พญ.">พญ.</option>
+              <option value="Dr.">Dr.</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-sm font-semibold text-gray-700">
+              ชื่อเต็ม:
+            </label>
+            <input
+              type="text"
+              value={editUser.fullName || ""}
+              onChange={(e) =>
+                setEditUser({ ...editUser, fullName: e.target.value })
+              }
+              className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+            />
+          </div>
+
+          <DatePickerInput
+            label="วันเดือนปีเกิด:"
+            value={editUser.birthDate}
+            onChange={(date) => setEditUser({ ...editUser, birthDate: date })}
+            CustomInput={CustomInput}
+          />
+
+          <div>
+            <label className="text-sm font-semibold text-gray-700">
+              เลขบัตรประชาชน (13 หลัก):
+            </label>
+            <input
+              type="text"
+              value={editUser.citizenId || ""}
+              onChange={(e) =>
+                setEditUser({ ...editUser, citizenId: e.target.value })
+              }
+              maxLength={13}
+              pattern="\\d{13}"
+              placeholder="กรอกเลขบัตรประชาชน 13 หลัก"
+              className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-semibold text-gray-700">
+              อีเมล:
+            </label>
+            <input
+              type="email"
+              value={editUser.email || ""}
+              onChange={(e) =>
+                setEditUser({ ...editUser, email: e.target.value })
+              }
+              className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-semibold text-gray-700">
+              รูปภาพ (URL):
+            </label>
+            <input
+              type="text"
+              value={editUser.photoUrl || ""}
+              onChange={(e) =>
+                setEditUser({ ...editUser, photoUrl: e.target.value })
+              }
+              placeholder="https://example.com/profile.jpg"
+              className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-4 pl-2">
+          <h3 className="flex items-center gap-2 text-xl font-extrabold text-[#0288d1] mb-2">
+            <FaEdit /> ข้อมูลเฉพาะแพทย์
+          </h3>
+
+          <div>
+            <label className="text-sm font-semibold text-gray-700">แผนก:</label>
+            <select
+              value={editUser.department || ""}
+              onChange={(e) =>
+                setEditUser({ ...editUser, department: e.target.value })
+              }
+              className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+            >
+              <option value="">เลือกแผนก</option>
+              <option value="รักษาสิวครบวงจร">รักษาสิวครบวงจร</option>
+              <option value="ทรีตเมนต์บำรุงผิวหน้า">
+                ทรีตเมนต์บำรุงผิวหน้า
+              </option>
+              <option value="เลเซอร์หน้าใส">เลเซอร์หน้าใส</option>
+              <option value="ฟิลเลอร์ & โบท็อกซ์">ฟิลเลอร์ & โบท็อกซ์</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-sm font-semibold text-gray-700">
+              รายละเอียดตนเอง:
+            </label>
+            <textarea
+              value={editUser.description || ""}
+              onChange={(e) =>
+                setEditUser({ ...editUser, description: e.target.value })
+              }
+              className="border border-gray-300 w-full p-2 rounded-lg h-[180px] resize-none focus:ring-2 focus:ring-[#0288d1] outline-none"
+            />
+          </div>
+        </div>
+
+        <div className="col-span-2 flex justify-center gap-4 mt-6 pt-4">
+          <button
+            onClick={handleClose}
+            className="flex items-center gap-2 bg-gray-300 text-gray-700 px-5 py-2 rounded-lg hover:bg-gray-400 cursor-pointer transition font-medium"
+          >
+            <FaTimes /> ยกเลิก
+          </button>
+          <button
+            onClick={handleSave}
+            className="flex items-center gap-2 bg-[#0288d1] text-white px-6 py-2 rounded-lg hover:bg-[#0277bd] cursor-pointer transition font-semibold shadow-md"
+          >
+            <FaSave /> บันทึก
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

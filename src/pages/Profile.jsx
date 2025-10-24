@@ -178,7 +178,20 @@ export default function Profile() {
               label="ชื่อ - นามสกุล"
               value={`${userData.prefix} ${userData.fullName}`}
             />
-            <InfoRow label="เพศ" value={userData.gender || "-"} />
+            <InfoRow
+              label="เพศ"
+              value={
+                userData.prefix === "นาย"
+                  ? "ชาย"
+                  : userData.prefix === "นาง" || userData.prefix === "นางสาว"
+                  ? "หญิง"
+                  : userData.prefix === "นพ."
+                  ? "ชาย"
+                  : userData.prefix === "พญ."
+                  ? "หญิง"
+                  : userData.gender || "-"
+              }
+            />
             <InfoRow
               label="อายุ"
               value={`${calculateAge(userData.birthDate)} ปี`}
@@ -295,7 +308,13 @@ function DoctorModal({
           <SelectInput
             label="คำนำหน้า:"
             value={editData.prefix}
-            setValue={(v) => setEditData({ ...editData, prefix: v })}
+            setValue={(v) => {
+              let inferredGender = editData.gender;
+              if (v === "นพ.") inferredGender = "ชาย";
+              else if (v === "พญ.") inferredGender = "หญิง";
+              else if (v === "Dr.") inferredGender = "ระบุไม่ได้";
+              setEditData({ ...editData, prefix: v, gender: inferredGender });
+            }}
             options={["นพ.", "พญ.", "Dr."]}
           />
           <TextInput
@@ -308,12 +327,6 @@ function DoctorModal({
             value={editData.birthDate}
             setValue={(v) => setEditData({ ...editData, birthDate: v })}
             CustomInput={CustomInput}
-          />
-          <SelectInput
-            label="เพศ:"
-            value={editData.gender}
-            setValue={(v) => setEditData({ ...editData, gender: v })}
-            options={["ชาย", "หญิง"]}
           />
           <TextInput
             label="เลขบัตรประชาชน (13 หลัก):"
@@ -410,9 +423,15 @@ function NormalModal({
           <SelectInput
             label="คำนำหน้า:"
             value={editData.prefix}
-            setValue={(v) => setEditData({ ...editData, prefix: v })}
+            setValue={(v) => {
+              let inferredGender = editData.gender;
+              if (v === "นาย") inferredGender = "ชาย";
+              else if (v === "นาง" || v === "นางสาว") inferredGender = "หญิง";
+              setEditData({ ...editData, prefix: v, gender: inferredGender });
+            }}
             options={["นาย", "นาง", "นางสาว"]}
           />
+
           <TextInput
             label="ชื่อเต็ม:"
             value={editData.fullName}
@@ -423,12 +442,6 @@ function NormalModal({
             value={editData.birthDate}
             setValue={(v) => setEditData({ ...editData, birthDate: v })}
             CustomInput={CustomInput}
-          />
-          <SelectInput
-            label="เพศ:"
-            value={editData.gender}
-            setValue={(v) => setEditData({ ...editData, gender: v })}
-            options={["ชาย", "หญิง"]}
           />
           <TextInput
             label="เลขบัตรประชาชน (13 หลัก):"

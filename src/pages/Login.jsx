@@ -21,7 +21,6 @@ export default function Login() {
   const [isRegister, setIsRegister] = useState(false);
   const [formData, setFormData] = useState({
     prefix: "",
-    gender: "",
     fullName: "",
     citizenId: "",
     birthDate: null,
@@ -96,7 +95,6 @@ export default function Login() {
 
         await setDoc(doc(db, "users", userCredential.user.uid), {
           prefix: formData.prefix,
-          gender: formData.gender,
           fullName: formData.fullName,
           citizenId: formData.citizenId,
           birthDate: formData.birthDate.toISOString(),
@@ -196,29 +194,12 @@ export default function Login() {
                     name="prefix"
                     value={formData.prefix || ""}
                     onChange={handleChange}
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-[#007b8f] outline-none w-full bg-white"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-[#007b8f] outline-none bg-white"
                   >
                     <option value="">-- เลือก --</option>
                     <option value="นาย">นาย</option>
                     <option value="นาง">นาง</option>
                     <option value="นางสาว">นางสาว</option>
-                  </select>
-                </div>
-
-                {/* เพศ */}
-                <div>
-                  <label className="text-gray-700 font-medium mb-1 block text-sm">
-                    เพศ
-                  </label>
-                  <select
-                    name="gender"
-                    value={formData.gender || ""}
-                    onChange={handleChange}
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-[#007b8f] outline-none w-full bg-white"
-                  >
-                    <option value="">-- เลือก --</option>
-                    <option value="ชาย">ชาย</option>
-                    <option value="หญิง">หญิง</option>
                   </select>
                 </div>
 
