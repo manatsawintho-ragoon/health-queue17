@@ -23,6 +23,8 @@ import {
   FaUserCircle,
   FaWrench,
   FaPlus,
+  FaSave,
+  FaTimes,
 } from "react-icons/fa";
 
 export default function DevManager() {
@@ -111,7 +113,15 @@ export default function DevManager() {
   };
 
   const handleEdit = (user) => {
-    setEditUser(user);
+    // normalize to include new fields so inputs are controlled
+    const normalized = {
+      prefix: user.prefix || "",
+      citizenId: user.citizenId || "",
+      photoUrl: user.photoUrl || "",
+      department: user.department || "",
+      ...user,
+    };
+    setEditUser(normalized);
     setShowModal(true);
   };
 
@@ -123,6 +133,11 @@ export default function DevManager() {
         email: editUser.email,
         gender: editUser.gender,
         role: editUser.role,
+        // new fields
+        prefix: editUser.prefix || "",
+        citizenId: editUser.citizenId || "",
+        photoUrl: editUser.photoUrl || "",
+        department: editUser.department || "",
       });
       Swal.fire({
         icon: "success",
@@ -304,7 +319,7 @@ export default function DevManager() {
                     </select>
                     <button
                       onClick={() => handleEdit(u)}
-                      className="flex items-center gap-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-1.5 rounded-md text-sm font-medium shadow-sm cursor-pointer"
+                      className="flex items-center gap-1 bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-md text-sm font-medium shadow-sm cursor-pointer"
                     >
                       <FaEdit size={15} /> แก้ไข
                     </button>
@@ -356,93 +371,178 @@ export default function DevManager() {
           </div>
         )}
 
-        {/* Modal */}
+        {/* Modal (REPLACED: upgraded modal matching AdminDashboard style) */}
         {showModal && editUser && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-            <div className="bg-white rounded-2xl p-6 w-[420px] shadow-2xl border-t-4 border-[#0288d1]">
-              <h3 className="text-xl font-bold text-[#0288d1] mb-4 text-center">
-                แก้ไขข้อมูลผู้ใช้
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fadeIn">
+            <div className="bg-white rounded-3xl p-8 w-[750px] shadow-2xl border border-[#0288d1]/30">
+              <h3 className="flex items-center justify-center gap-2 text-2xl font-extrabold text-[#0288d1] mb-6">
+                <FaUserCog /> แก้ไขข้อมูลผู้ใช้
               </h3>
 
-              <div className="space-y-3">
+              {/* Layout 2 คอลัมน์ */}
+              <div className="grid grid-cols-2 gap-x-8 gap-y-5">
                 <div>
-                  <p className="text-sm text-gray-500">UID</p>
-                  <p className="font-mono text-xs bg-gray-100 rounded px-2 py-1">
-                    {editUser.id}
-                  </p>
+                  <label className="text-sm font-semibold text-gray-700">
+                    คำนำหน้า:
+                  </label>
+                  <select
+                    value={editUser.prefix || ""}
+                    onChange={(e) =>
+                      setEditUser({ ...editUser, prefix: e.target.value })
+                    }
+                    className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+                  >
+                    <option value="">เลือกคำนำหน้า</option>
+                    <option value="นาย">นาย</option>
+                    <option value="นาง">นาง</option>
+                    <option value="นางสาว">นางสาว</option>
+                  </select>
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium">ชื่อเต็ม:</label>
+                  <label className="text-sm font-semibold text-gray-700">
+                    ชื่อเต็ม:
+                  </label>
                   <input
                     type="text"
                     value={editUser.fullName || ""}
                     onChange={(e) =>
                       setEditUser({ ...editUser, fullName: e.target.value })
                     }
-                    className="border w-full p-2 rounded mb-1"
+                    className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium">อีเมล:</label>
+                  <label className="text-sm font-semibold text-gray-700">
+                    เลขบัตรประชาชน (13 หลัก):
+                  </label>
+                  <input
+                    type="text"
+                    value={editUser.citizenId || ""}
+                    onChange={(e) =>
+                      setEditUser({ ...editUser, citizenId: e.target.value })
+                    }
+                    maxLength={13}
+                    pattern="\\d{13}"
+                    placeholder="กรอกเลขบัตรประชาชน 13 หลัก"
+                    className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-semibold text-gray-700">
+                    อีเมล:
+                  </label>
                   <input
                     type="email"
                     value={editUser.email || ""}
                     onChange={(e) =>
                       setEditUser({ ...editUser, email: e.target.value })
                     }
-                    className="border w-full p-2 rounded mb-1"
+                    className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-sm font-medium">เพศ:</label>
-                    <select
-                      value={editUser.gender || ""}
-                      onChange={(e) =>
-                        setEditUser({ ...editUser, gender: e.target.value })
-                      }
-                      className="border w-full p-2 rounded"
-                    >
-                      <option value="">เลือกเพศ</option>
-                      <option value="ชาย">ชาย</option>
-                      <option value="หญิง">หญิง</option>
-                    </select>
-                  </div>
+                <div>
+                  <label className="text-sm font-semibold text-gray-700">
+                    เพศ:
+                  </label>
+                  <select
+                    value={editUser.gender || ""}
+                    onChange={(e) =>
+                      setEditUser({ ...editUser, gender: e.target.value })
+                    }
+                    className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+                  >
+                    <option value="">เลือกเพศ</option>
+                    <option value="ชาย">ชาย</option>
+                    <option value="หญิง">หญิง</option>
+                  </select>
+                </div>
 
-                  <div>
-                    <label className="text-sm font-medium">บทบาท:</label>
+                <div>
+                  <label className="text-sm font-semibold text-gray-700">
+                    รูปภาพ (URL):
+                  </label>
+                  <input
+                    type="text"
+                    value={editUser.photoUrl || ""}
+                    onChange={(e) =>
+                      setEditUser({ ...editUser, photoUrl: e.target.value })
+                    }
+                    placeholder="https://example.com/profile.jpg"
+                    className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+                  />
+                  {editUser.photoUrl && (
+                    <div className="mt-3">
+                      <img
+                        src={editUser.photoUrl}
+                        alt="preview"
+                        className="w-full max-h-[300px] object-contain rounded-2xl border-2 border-[#0288d1]/30 shadow-sm"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {editUser.role === "หมอ" && (
+                  <div className="col-span-2">
+                    <label className="text-sm font-semibold text-gray-700">
+                      แผนก:
+                    </label>
                     <select
-                      value={editUser.role || ""}
+                      value={editUser.department || ""}
                       onChange={(e) =>
-                        setEditUser({ ...editUser, role: e.target.value })
+                        setEditUser({ ...editUser, department: e.target.value })
                       }
-                      className="border w-full p-2 rounded"
+                      className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
                     >
-                      {roleOrder.map((r) => (
-                        <option key={r} value={r}>
-                          {r}
-                        </option>
-                      ))}
+                      <option value="">เลือกแผนก</option>
+                      <option value="รักษาสิวครบวงจร">รักษาสิวครบวงจร</option>
+                      <option value="ทรีตเมนต์บำรุงผิวหน้า">
+                        ทรีตเมนต์บำรุงผิวหน้า
+                      </option>
+                      <option value="เลเซอร์หน้าใส">เลเซอร์หน้าใส</option>
+                      <option value="ฟิลเลอร์ & โบท็อกซ์">
+                        ฟิลเลอร์ & โบท็อกซ์
+                      </option>
                     </select>
                   </div>
+                )}
+
+                <div className="col-span-2">
+                  <label className="text-sm font-semibold text-gray-700">
+                    บทบาท:
+                  </label>
+                  <select
+                    value={editUser.role || ""}
+                    onChange={(e) =>
+                      setEditUser({ ...editUser, role: e.target.value })
+                    }
+                    className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+                  >
+                    {roleOrder.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 mt-5">
+              {/* ปุ่ม */}
+              <div className="flex justify-end gap-3 mt-8 pt-5">
                 <button
                   onClick={() => setShowModal(false)}
-                  className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400 cursor-pointer"
+                  className="flex items-center gap-2 bg-gray-300 text-gray-700 px-5 py-2 rounded-lg hover:bg-gray-400 cursor-pointer transition font-medium"
                 >
-                  ยกเลิก
+                  <FaTimes /> ยกเลิก
                 </button>
                 <button
                   onClick={saveEdit}
-                  className="bg-[#0288d1] text-white px-4 py-2 rounded hover:bg-[#0277bd] cursor-pointer"
+                  className="flex items-center gap-2 bg-[#0288d1] text-white px-6 py-2 rounded-lg hover:bg-[#0277bd] cursor-pointer transition font-semibold shadow-md"
                 >
-                  บันทึก
+                  <FaSave /> บันทึก
                 </button>
               </div>
             </div>

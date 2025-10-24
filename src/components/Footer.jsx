@@ -7,9 +7,9 @@ export default function Footer() {
       <div className="max-w-6xl mx-auto px-6 py-10 grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* โลโก้ / คำอธิบาย */}
         <div>
-          <h2 className="text-2xl font-bold mb-2">WHOCARE HOSPITAL</h2>
+          <h2 className="text-2xl font-bold mb-2">WHOCARE CLINIC</h2>
           <p className="text-sm text-white/80 leading-relaxed">
-            โรงพยาบาลที่ใส่ใจในทุกการดูแล สุขภาพของคุณคือหัวใจของเรา  
+            คลินิกที่ใส่ใจในทุกการดูแล สุขภาพของคุณคือหัวใจของเรา  
             ให้บริการตรวจ รักษา และให้คำปรึกษาครบวงจร โดยทีมแพทย์ผู้เชี่ยวชาญ
           </p>
         </div>
@@ -42,7 +42,7 @@ export default function Footer() {
 
       {/* ลิขสิทธิ์ */}
       <div className="text-center py-4 text-sm text-white/70">
-        © {new Date().getFullYear()} WHOCARE Hospital | All Rights Reserved
+        © {new Date().getFullYear()} WHOCARE Clinic | All Rights Reserved
       </div>
     </footer>
   );

@@ -46,7 +46,7 @@ export default function Navbar() {
           className="absolute left-1/2 transform -translate-x-1/2 text-center flex flex-col items-center justify-center"
         >
           <h1 className="text-2xl font-semibold tracking-widest">WHOCARE</h1>{" "}
-          <p className="text-sm tracking-[0.4em]">คุณจะไม่ตายเพียงลำพัง!</p>
+          <p className="text-sm tracking-[0.4em]">เค้าไม่แคร์ แต่เราแคร์</p>
         </Link>
 
         {/* ปุ่มขวา */}

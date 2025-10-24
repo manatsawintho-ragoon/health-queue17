@@ -26,6 +26,8 @@ import {
   FaSyncAlt,
   FaPlusCircle,
   FaHotjar,
+  FaSave,
+  FaTimes,
 } from "react-icons/fa";
 
 export default function AdminDashboard() {
@@ -185,7 +187,15 @@ export default function AdminDashboard() {
   };
 
   const handleEdit = (user) => {
-    setEditUser(user);
+    // Ensure we have the new fields present (so modal inputs are controlled)
+    const normalized = {
+      prefix: user.prefix || "",
+      citizenId: user.citizenId || "",
+      photoUrl: user.photoUrl || "",
+      department: user.department || "",
+      ...user,
+    };
+    setEditUser(normalized);
     setShowModal(true);
   };
 
@@ -197,6 +207,11 @@ export default function AdminDashboard() {
         email: editUser.email,
         gender: editUser.gender,
         role: editUser.role,
+        // New fields added:
+        prefix: editUser.prefix || "",
+        citizenId: editUser.citizenId || "",
+        photoUrl: editUser.photoUrl || "",
+        department: editUser.department || "",
       });
       Swal.fire({
         icon: "success",
@@ -540,66 +555,91 @@ export default function AdminDashboard() {
   );
 
   const renderServiceModal = () => (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl p-6 w-[420px] shadow-2xl border-t-4 border-[#0288d1]">
-        <h3 className="text-xl font-bold text-[#0288d1] mb-4 text-center">
-          {isEditingService ? "แก้ไขบริการ" : "เพิ่มบริการใหม่"}
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fadeIn">
+      <div className="bg-white rounded-3xl p-8 w-[750px] shadow-2xl border border-[#0288d1]/30">
+        <h3 className="flex items-center justify-center gap-2 text-2xl font-extrabold text-[#0288d1] mb-6 border-b-2 border-[#0288d1]/30 pb-2">
+          {isEditingService ? (
+            <>
+              <FaEdit /> แก้ไขบริการ
+            </>
+          ) : (
+            <>
+              <FaPlusCircle /> เพิ่มบริการใหม่
+            </>
+          )}
         </h3>
 
-        <div className="space-y-3">
+        {/* Grid Layout แบบ 2 คอลัมน์ */}
+        <div className="grid grid-cols-2 gap-x-8 gap-y-5">
           <div>
-            <label className="text-sm font-medium">ชื่อบริการ:</label>
+            <label className="text-sm font-semibold text-gray-700">
+              ชื่อบริการ:
+            </label>
             <input
               type="text"
               value={serviceForm.name}
               onChange={(e) =>
                 setServiceForm({ ...serviceForm, name: e.target.value })
               }
-              className="border w-full p-2 rounded"
+              className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
             />
           </div>
+
           <div>
-            <label className="text-sm font-medium">รายละเอียด:</label>
+            <label className="text-sm font-semibold text-gray-700">
+              รายละเอียด:
+            </label>
             <textarea
               value={serviceForm.description}
               onChange={(e) =>
                 setServiceForm({ ...serviceForm, description: e.target.value })
               }
-              className="border w-full p-2 rounded"
+              className="border border-gray-300 w-full p-2 rounded-lg h-[70px] focus:ring-2 focus:ring-[#0288d1] outline-none resize-none"
             />
           </div>
+
           <div>
-            <label className="text-sm font-medium">ราคา (บาท):</label>
+            <label className="text-sm font-semibold text-gray-700">
+              ราคา (บาท):
+            </label>
             <input
               type="number"
               value={serviceForm.price}
               onChange={(e) =>
                 setServiceForm({ ...serviceForm, price: e.target.value })
               }
-              className="border w-full p-2 rounded"
+              className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
             />
           </div>
+
           <div>
-            <label className="text-sm font-medium">URL รูปภาพ:</label>
+            <label className="text-sm font-semibold text-gray-700">
+              URL รูปภาพ:
+            </label>
             <input
               type="text"
               value={serviceForm.image}
               onChange={(e) =>
                 setServiceForm({ ...serviceForm, image: e.target.value })
               }
-              className="border w-full p-2 rounded"
+              className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
               placeholder="https://example.com/image.jpg"
             />
             {serviceForm.image && (
-              <img
-                src={serviceForm.image}
-                alt="preview"
-                className="w-32 h-32 object-cover rounded-lg border mt-2"
-              />
+              <div className="mt-3 flex justify-center">
+                <img
+                  src={serviceForm.image}
+                  alt="preview"
+                  className="w-full max-h-[300px] object-contain rounded-2xl border-2 border-[#0288d1]/30 shadow-sm"
+                />
+              </div>
             )}
           </div>
-          <div>
-            <label className="text-sm font-medium">ประเภทบริการ:</label>
+
+          <div className="col-span-2">
+            <label className="text-sm font-semibold text-gray-700">
+              ประเภทบริการ:
+            </label>
             <select
               value={serviceForm.recommend ? "true" : "false"}
               onChange={(e) =>
@@ -608,7 +648,7 @@ export default function AdminDashboard() {
                   recommend: e.target.value === "true",
                 })
               }
-              className="border w-full p-2 rounded"
+              className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
             >
               <option value="false">บริการทั่วไป</option>
               <option value="true">บริการแนะนำมาใหม่!! (แสดงหน้าหลัก)</option>
@@ -616,18 +656,19 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 mt-5">
+        {/* ปุ่ม */}
+        <div className="flex justify-end gap-3 mt-8 pt-5">
           <button
             onClick={() => setShowServiceModal(false)}
-            className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400"
+            className="flex items-center gap-2 bg-gray-300 text-gray-700 px-5 py-2 rounded-lg hover:bg-gray-400 cursor-pointer transition font-medium"
           >
-            ยกเลิก
+            <FaTimes /> ยกเลิก
           </button>
           <button
             onClick={isEditingService ? handleUpdateService : handleAddService}
-            className="bg-[#0288d1] text-white px-4 py-2 rounded hover:bg-[#0277bd]"
+            className="flex items-center gap-2 bg-[#0288d1] text-white px-6 py-2 rounded-lg hover:bg-[#0277bd] cursor-pointer transition font-semibold shadow-md"
           >
-            {isEditingService ? "บันทึกการแก้ไข" : "บันทึก"}
+            <FaSave /> {isEditingService ? "บันทึกการแก้ไข" : "บันทึก"}
           </button>
         </div>
       </div>
@@ -658,7 +699,7 @@ export default function AdminDashboard() {
                 },
                 {
                   icon: <FaUserShield />,
-                  label: "แอดมิน",
+                  label: "แอดมินทั้งหมด",
                   value: stats.admins,
                 },
                 {
@@ -666,10 +707,10 @@ export default function AdminDashboard() {
                   label: "หมอทั้งหมด",
                   value: stats.doctors,
                 },
-                { icon: <FaWrench />, label: "บริการ", value: stats.services },
+                { icon: <FaWrench />, label: "บริการทั้งหมด", value: stats.services },
                 {
                   icon: <FaBoxOpen />,
-                  label: "สร้างโค้ดส่วนลด",
+                  label: "โค้ดส่วนลดทั้งหมด",
                   value: stats.packages,
                 },
                 {
@@ -724,7 +765,6 @@ export default function AdminDashboard() {
             จัดการระบบ WHOCARE สำหรับแอดมินและผู้พัฒนา
           </p>
         </div>
-
         {currentUser && (
           <div className="flex justify-center mb-8">
             <div className="bg-white shadow-md border border-gray-100 rounded-2xl py-3 px-6 flex items-center gap-3">
@@ -740,7 +780,6 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
-
         <div className="flex flex-wrap justify-center gap-3 mb-10">
           {[
             { key: "overview", label: "ภาพรวม", icon: <FaHome /> },
@@ -749,7 +788,11 @@ export default function AdminDashboard() {
             { key: "users", label: "จัดการคนไข้", icon: <FaUsers /> },
             { key: "services", label: "จัดการบริการ", icon: <FaWrench /> },
             { key: "packages", label: "สร้างโค้ดส่วนลด", icon: <FaBoxOpen /> },
-            { key: "appointments", label: "จัดการระบบคิว", icon: <FaClipboardList /> },
+            {
+              key: "appointments",
+              label: "จัดการระบบคิว",
+              icon: <FaClipboardList />,
+            },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -769,48 +812,89 @@ export default function AdminDashboard() {
             </button>
           ))}
         </div>
-
         {renderContent()}
         {showModal && editUser && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-            <div className="bg-white rounded-2xl p-6 w-[420px] shadow-2xl border-t-4 border-[#0288d1]">
-              <h3 className="text-xl font-bold text-[#0288d1] mb-4 text-center">
-                แก้ไขข้อมูลผู้ใช้
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fadeIn">
+            <div className="bg-white rounded-3xl p-8 w-[750px] shadow-2xl border border-[#0288d1]/30">
+              <h3 className="flex items-center justify-center gap-2 text-2xl font-extrabold text-[#0288d1] mb-6 border-b-2 border-[#0288d1]/30 pb-2">
+                <FaUserCog /> แก้ไขข้อมูลผู้ใช้
               </h3>
 
-              <div className="space-y-3">
+              {/* Layout 2 คอลัมน์ */}
+              <div className="grid grid-cols-2 gap-x-8 gap-y-5">
                 <div>
-                  <label className="text-sm font-medium">ชื่อเต็ม:</label>
+                  <label className="text-sm font-semibold text-gray-700">
+                    คำนำหน้า:
+                  </label>
+                  <select
+                    value={editUser.prefix || ""}
+                    onChange={(e) =>
+                      setEditUser({ ...editUser, prefix: e.target.value })
+                    }
+                    className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+                  >
+                    <option value="">เลือกคำนำหน้า</option>
+                    <option value="นาย">นาย</option>
+                    <option value="นาง">นาง</option>
+                    <option value="นางสาว">นางสาว</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-semibold text-gray-700">
+                    ชื่อเต็ม:
+                  </label>
                   <input
                     type="text"
                     value={editUser.fullName || ""}
                     onChange={(e) =>
                       setEditUser({ ...editUser, fullName: e.target.value })
                     }
-                    className="border w-full p-2 rounded mb-1"
+                    className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium">อีเมล:</label>
+                  <label className="text-sm font-semibold text-gray-700">
+                    เลขบัตรประชาชน (13 หลัก):
+                  </label>
+                  <input
+                    type="text"
+                    value={editUser.citizenId || ""}
+                    onChange={(e) =>
+                      setEditUser({ ...editUser, citizenId: e.target.value })
+                    }
+                    maxLength={13}
+                    pattern="\\d{13}"
+                    placeholder="กรอกเลขบัตรประชาชน 13 หลัก"
+                    className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-semibold text-gray-700">
+                    อีเมล:
+                  </label>
                   <input
                     type="email"
                     value={editUser.email || ""}
                     onChange={(e) =>
                       setEditUser({ ...editUser, email: e.target.value })
                     }
-                    className="border w-full p-2 rounded mb-1"
+                    className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium">เพศ:</label>
+                  <label className="text-sm font-semibold text-gray-700">
+                    เพศ:
+                  </label>
                   <select
                     value={editUser.gender || ""}
                     onChange={(e) =>
                       setEditUser({ ...editUser, gender: e.target.value })
                     }
-                    className="border w-full p-2 rounded"
+                    className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
                   >
                     <option value="">เลือกเพศ</option>
                     <option value="ชาย">ชาย</option>
@@ -819,13 +903,64 @@ export default function AdminDashboard() {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium">บทบาท:</label>
+                  <label className="text-sm font-semibold text-gray-700">
+                    รูปภาพ (URL):
+                  </label>
+                  <input
+                    type="text"
+                    value={editUser.photoUrl || ""}
+                    onChange={(e) =>
+                      setEditUser({ ...editUser, photoUrl: e.target.value })
+                    }
+                    placeholder="https://example.com/profile.jpg"
+                    className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+                  />
+                  {editUser.photoUrl && (
+                    <div className="mt-3 flex justify-center">
+                      <img
+                        src={editUser.photoUrl}
+                        alt="preview"
+                        className="w-full max-h-[300px] object-contain rounded-2xl border-2 border-[#0288d1]/30 shadow-sm"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {editUser.role === "หมอ" && (
+                  <div className="col-span-2">
+                    <label className="text-sm font-semibold text-gray-700">
+                      แผนก:
+                    </label>
+                    <select
+                      value={editUser.department || ""}
+                      onChange={(e) =>
+                        setEditUser({ ...editUser, department: e.target.value })
+                      }
+                      className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+                    >
+                      <option value="">เลือกแผนก</option>
+                      <option value="รักษาสิวครบวงจร">รักษาสิวครบวงจร</option>
+                      <option value="ทรีตเมนต์บำรุงผิวหน้า">
+                        ทรีตเมนต์บำรุงผิวหน้า
+                      </option>
+                      <option value="เลเซอร์หน้าใส">เลเซอร์หน้าใส</option>
+                      <option value="ฟิลเลอร์ & โบท็อกซ์">
+                        ฟิลเลอร์ & โบท็อกซ์
+                      </option>
+                    </select>
+                  </div>
+                )}
+
+                <div className="col-span-2">
+                  <label className="text-sm font-semibold text-gray-700">
+                    บทบาท:
+                  </label>
                   <select
                     value={editUser.role || ""}
                     onChange={(e) =>
                       setEditUser({ ...editUser, role: e.target.value })
                     }
-                    className="border w-full p-2 rounded"
+                    className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
                   >
                     {["แอดมิน", "หมอ", "คนไข้"].map((r) => (
                       <option key={r} value={r}>
@@ -836,25 +971,25 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 mt-5">
+              {/* ปุ่ม */}
+              <div className="flex justify-end gap-3 mt-8 pt-5">
                 <button
                   onClick={() => setShowModal(false)}
-                  className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400 cursor-pointer"
+                  className="flex items-center gap-2 bg-gray-300 text-gray-700 px-5 py-2 rounded-lg hover:bg-gray-400 cursor-pointer transition font-medium"
                 >
-                  ยกเลิก
+                  <FaTimes /> ยกเลิก
                 </button>
                 <button
                   onClick={saveEdit}
-                  className="bg-[#0288d1] text-white px-4 py-2 rounded hover:bg-[#0277bd] cursor-pointer"
+                  className="flex items-center gap-2 bg-[#0288d1] text-white px-6 py-2 rounded-lg hover:bg-[#0277bd] cursor-pointer transition font-semibold shadow-md"
                 >
-                  บันทึก
+                  <FaSave /> บันทึก
                 </button>
               </div>
             </div>
           </div>
         )}
-
-        {showServiceModal && renderServiceModal()}
+        ;{showServiceModal && renderServiceModal()}
       </div>
     </MainLayout>
   );
