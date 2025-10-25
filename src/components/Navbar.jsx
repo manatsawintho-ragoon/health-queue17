@@ -82,7 +82,16 @@ export default function Navbar() {
                     โปรไฟล์ของฉัน
                   </Link>
 
-                  {/* ✅ ปุ่มเฉพาะ Role */}
+                  <Link
+                    to="/appointments"
+                    className="block px-5 py-3 text-sm font-medium hover:bg-[#006680] hover:text-white transition-all cursor-pointer"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <i className="fa-solid fa-bookmark mr-2"></i>
+                    การนัดหมายของฉัน
+                  </Link>
+
+                  {/*  ปุ่มเฉพาะ Role */}
                   {userData?.role === "ผู้พัฒนา" && (
                     <Link
                       to="/DevManager"
@@ -149,7 +158,7 @@ export default function Navbar() {
           เกี่ยวกับเรา
         </Link>
         <Link to="/services" className="hover:text-[#006680] cursor-pointer">
-          คลินิกบริการ
+          บริการของเรา
         </Link>
         <Link to="/packages" className="hover:text-[#006680] cursor-pointer">
           แพ็กเกจและโปรโมชั่น

@@ -96,7 +96,7 @@ export default function Home() {
       title: `<h2 class="text-[#006680] font-bold">${service.title}</h2>`,
       html: `
         <img src="${service.image}" alt="${service.title}" 
-          style="width: 100%; border-radius: 12px; margin-bottom: 12px;" />
+          style="max-width: 450px; border-radius: 12px; margin-bottom: 12px;" />
         <p style="color: #444; font-size: 15px; text-align: left;">${service.description}</p>
         <p style="margin-top: 12px; color: #006680; font-weight: bold; font-size: 16px;">ราคา: ${service.price} บาท</p>
       `,
@@ -172,7 +172,7 @@ export default function Home() {
               dbServices.map((s, i) => (
                 <div
                   key={i}
-                  className="min-w-[320px] bg-white rounded-3xl border border-[#dce7ea] shadow-md hover:shadow-2xl transition-all transform hover:scale-105 flex-shrink-0 z-20 relative"
+                  className="max-w-[320px] bg-white rounded-3xl border border-[#dce7ea] shadow-md hover:shadow-2xl transition-all transform hover:scale-105 flex-shrink-0 z-20 relative"
                   style={{ marginTop: "10px", marginBottom: "10px" }}
                 >
                   {/* ป้าย Hot */}

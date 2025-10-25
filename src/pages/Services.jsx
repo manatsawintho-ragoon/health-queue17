@@ -75,7 +75,7 @@ export default function Service() {
             confirmButtonText: "เข้าสู่ระบบ",
             confirmButtonColor: "#006680",
           }).then(() => {
-            navigate("/Whocare/login");
+            navigate("/login");
           });
           return false;
         } else {
@@ -86,7 +86,7 @@ export default function Service() {
             timer: 1500,
             showConfirmButton: false,
           });
-          navigate("/Whocare/booking");
+          navigate("/booking");
         }
       },
     });

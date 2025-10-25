@@ -17,6 +17,7 @@ import Profile from "./pages/Profile.jsx";
 import DevManager from "./pages/DevManager.jsx";
 import AdminDashboard from "./pages/AdminDashboard.jsx";
 import Booking from "./pages/Booking.jsx";
+import Appointment from "./pages/Appointments.jsx";
 
 // scrollToTop 
 import ScrollToTop from "./components/ScrollTotop.jsx";
@@ -48,6 +49,9 @@ createRoot(document.getElementById("root")).render(
 
         {/* Booking Page */}
         <Route path="/booking" element={<Booking />} />
+
+        {/* appointments */}
+        <Route path="/appointments" element={<Appointment />} />
 
 
 

@@ -1,11 +1,8 @@
 import React from "react";
 import MainLayout from "../layouts/MainLayout";
 import hospitalImg from "../assets/spu-building.jpg";
-import { doctorCategories } from "../data/doctors";
 
 export default function About() {
-  // รวมหมอทั้งหมดจากทุก category เพื่อโชว์แบบย่อ
-  const allDoctors = doctorCategories.flatMap((cat) => cat.doctors).slice(0, 6);
 
   return (
     <MainLayout>
@@ -97,31 +94,6 @@ export default function About() {
               </p>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* Team Section */}
-      <section className="max-w-6xl mx-auto px-6 py-16 text-center">
-        <h2 className="text-3xl font-bold text-[#006680] mb-8">
-          ทีมแพทย์และผู้เชี่ยวชาญของเรา
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {allDoctors.map((doc, i) => (
-            <div
-              key={i}
-              className="bg-white p-6 rounded-2xl shadow-md hover:shadow-lg transform hover:scale-105 transition duration-300"
-            >
-              <img
-                src={doc.img}
-                alt={doc.name}
-                className="w-32 h-32 rounded-full mx-auto mb-4 object-cover border-4 border-[#006680]/30"
-              />
-              <h3 className="text-xl font-semibold text-[#006680]">
-                {doc.name}
-              </h3>
-              <p className="text-gray-600 text-sm">{doc.specialty}</p>
-            </div>
-          ))}
         </div>
       </section>
     </MainLayout>

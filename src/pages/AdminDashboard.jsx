@@ -868,8 +868,8 @@ export default function AdminDashboard() {
           },
           { icon: <FaWrench />, label: "บริการทั้งหมด", value: stats.services },
           {
-            icon: <FaBoxOpen />,
-            label: "โปรโมชั่นทั้งหมด",
+            icon: <FaPercent />,
+            label: "บริการโปรโมชั่นทั้งหมด",
             value: stats.promotions,
           },
           {
