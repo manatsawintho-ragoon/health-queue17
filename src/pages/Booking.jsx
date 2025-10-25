@@ -610,6 +610,7 @@ export default function Booking() {
                       type="email"
                       name="email"
                       value={form.email}
+                      readOnly
                       onChange={handleChange}
                       className="border border-gray-300 rounded-lg p-2 w-full text-sm"
                     />
