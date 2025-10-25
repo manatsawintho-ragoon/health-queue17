@@ -4,4 +4,5 @@
 
 - `VITE_EMAILJS_SERVICE_ID` : Service ID จาก EmailJS
 - `VITE_EMAILJS_TEMPLATE_ID` : Template ID จาก EmailJS
+- `VITE_EMAILJS_TEMPLATE_ID_EDIT` :  Template ID_EDIT จาก EmailJS (สำหรับหน้าแก้ไขเวลาบริการ)
 - `VITE_EMAILJS_PUBLIC_KEY` : Public Key จาก EmailJS
