@@ -8,6 +8,11 @@ import {
   updateDoc,
   deleteDoc,
   doc,
+  query,
+  where,
+  getDoc,
+  runTransaction,
+  serverTimestamp,
 } from "firebase/firestore";
 import Swal from "sweetalert2";
 import MainLayout from "../layouts/MainLayout";
@@ -72,6 +77,105 @@ export default function AdminDashboard() {
   const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = 30;
 
+  // Appointment states
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingAppt, setEditingAppt] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedTime, setSelectedTime] = useState("");
+  const [timeSlots, setTimeSlots] = useState([]);
+  const [bookedTimes, setBookedTimes] = useState([]);
+  const [pendingTimes, setPendingTimes] = useState([]);
+
+  // แปลง Date object → yyyy-MM-dd (เช่น 2025-10-29)
+  const toLocalDateString = (date) => {
+    if (!date) return "";
+    const d = new Date(date);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
+  // ฟังก์ชันสร้างช่วงเวลาการจอง
+  const generateTimeSlots = (day) => {
+    const slots = [];
+    let startHour = day === 0 || day === 6 ? 11 : 10; // เสาร์–อาทิตย์เริ่ม 11 โมง
+    let endHour = 20; // ถึง 20.00
+    for (let h = startHour; h < endHour; h++) {
+      if (h === 12) continue; // ข้ามพักเที่ยง
+      slots.push(`${h.toString().padStart(2, "0")}:00`);
+    }
+    return slots;
+  };
+
+  // โหลดข้อมูลทุกครั้งเมื่อเลือกวันใหม่
+  useEffect(() => {
+    const loadSlots = async () => {
+      if (!selectedDate) return;
+      const dateStr = toLocalDateString(selectedDate);
+      const slots = generateTimeSlots(selectedDate.getDay());
+      setTimeSlots(slots);
+      const qA = query(
+        collection(db, "appointments"),
+        where("date", "==", dateStr)
+      );
+      const qP = query(
+        collection(db, "pendingBookings"),
+        where("date", "==", dateStr)
+      );
+      const [snapA, snapP] = await Promise.all([getDocs(qA), getDocs(qP)]);
+      const now = new Date();
+      setBookedTimes(snapA.docs.map((d) => ({ id: d.id, ...d.data() })));
+      setPendingTimes(
+        snapP.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter((p) => p.expiresAt && new Date(p.expiresAt) > now)
+      );
+    };
+    loadSlots();
+  }, [selectedDate]);
+
+  const openEditModal = (appt) => {
+    setEditingAppt(appt);
+    const d = new Date(appt.date);
+    setSelectedDate(d);
+    setSelectedTime(appt.time);
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedDate || !selectedTime) {
+      Swal.fire("กรุณาเลือกวันและเวลา", "", "warning");
+      return;
+    }
+    const dateStr = toLocalDateString(selectedDate);
+
+    try {
+      const qApp = query(
+        collection(db, "appointments"),
+        where("date", "==", dateStr),
+        where("time", "==", selectedTime)
+      );
+      const snap = await getDocs(qApp);
+      const conflict = snap.docs.some((d) => d.id !== editingAppt.id);
+      if (conflict) {
+        Swal.fire("ขออภัย", "เวลานี้ถูกจองแล้ว", "warning");
+        return;
+      }
+
+      await updateDoc(doc(db, "appointments", editingAppt.id), {
+        date: dateStr,
+        time: selectedTime,
+      });
+
+      Swal.fire("สำเร็จ", "อัปเดตวันและเวลาการจองเรียบร้อย", "success");
+      setShowEditModal(false);
+      fetchAppointments();
+    } catch (err) {
+      Swal.fire("เกิดข้อผิดพลาด", String(err), "error");
+    }
+  };
+
   // Service states (original)
   const [services, setServices] = useState([]);
   const [serviceForm, setServiceForm] = useState({
@@ -98,6 +202,25 @@ export default function AdminDashboard() {
   const [showPromoModal, setShowPromoModal] = useState(false);
   const [isEditingPromo, setIsEditingPromo] = useState(false);
   const [editPromoId, setEditPromoId] = useState(null);
+  // ==== Queue management (appointments & refunds) ====
+  const [appointments, setAppointments] = useState([]);
+  const [refundRequests, setRefundRequests] = useState([]);
+  const [limitCount, setLimitCount] = useState(10);
+
+  const fetchAppointments = async () => {
+    const snapshot = await getDocs(collection(db, "appointments"));
+    setAppointments(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
+  };
+
+  const fetchRefunds = async () => {
+    const snapshot = await getDocs(collection(db, "refundRequests"));
+    setRefundRequests(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
+  };
+
+  useEffect(() => {
+    fetchAppointments();
+    fetchRefunds();
+  }, []);
 
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem("user"));
@@ -935,6 +1058,450 @@ export default function AdminDashboard() {
     </div>
   );
 
+  const renderManageAppointments = () => {
+    const today = new Date();
+    const weekMaxDate = new Date(today);
+    weekMaxDate.setDate(today.getDate() + 6);
+
+    const toLocalDateString = (date) => {
+      if (!date) return "";
+      const d = new Date(date);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    };
+
+    const generateTimeSlots = (day) => {
+      const slots = [];
+      let startHour = day === 0 || day === 6 ? 11 : 10;
+      let endHour = 20;
+      for (let h = startHour; h < endHour; h++) {
+        if (h === 12) continue;
+        slots.push(`${h.toString().padStart(2, "0")}:00`);
+      }
+      return slots;
+    };
+
+    const isPastTime = (slotTime) => {
+      if (!selectedDate) return false;
+      const now = new Date();
+      const sel = new Date(selectedDate);
+      if (
+        now.getFullYear() === sel.getFullYear() &&
+        now.getMonth() === sel.getMonth() &&
+        now.getDate() === sel.getDate()
+      ) {
+        const [h] = slotTime.split(":").map(Number);
+        if (h < now.getHours()) return true;
+        if (h === now.getHours() && now.getMinutes() >= 30) return true;
+      }
+      return sel < new Date(today.toDateString());
+    };
+
+    const isBookedExpired = (entry) => {
+      if (!entry) return false;
+      try {
+        const now = new Date();
+        const todayStr = now.toISOString().split("T")[0];
+        if (entry.date !== todayStr) return false;
+        const [h, m] = entry.time.split(":").map(Number);
+        const diffMin = now.getHours() * 60 + now.getMinutes() - (h * 60 + m);
+        return diffMin >= 60;
+      } catch {
+        return false;
+      }
+    };
+
+    const handleDeleteAppointment = async (id) => {
+      const res = await Swal.fire({
+        title: "ยืนยันการลบ?",
+        text: "ต้องการลบการจองนี้หรือไม่",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#d33",
+        cancelButtonColor: "#0288d1",
+        confirmButtonText: "ลบ",
+        cancelButtonText: "ยกเลิก",
+      });
+      if (res.isConfirmed) {
+        await deleteDoc(doc(db, "appointments", id));
+        Swal.fire("ลบแล้ว", "การจองถูกลบออกเรียบร้อย", "success");
+        fetchAppointments();
+      }
+    };
+
+    return (
+      <div className="max-w-6xl mx-auto space-y-10">
+        <div>
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="font-bold text-[#006680] text-2xl flex items-center gap-2">
+              <FaClipboardList /> ระบบจัดการคิวทั้งหมด
+            </h3>
+            <button
+              onClick={fetchAppointments}
+              className="flex items-center gap-2 bg-[#0288d1] text-white px-4 py-2 rounded-full text-sm hover:bg-[#0277bd]"
+            >
+              <FaSyncAlt /> รีเฟรช
+            </button>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-md border border-gray-100">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-[#0288d1]/10 text-[#006680]">
+                <tr>
+                  <th className="p-3 text-center w-12">#</th>
+                  <th className="p-3">บริการ</th>
+                  <th className="p-3">ผู้จอง</th>
+                  <th className="p-3">อีเมล</th>
+                  <th className="p-3">วัน / เวลา</th>
+                  <th className="p-3 text-center">การจัดการ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {appointments.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" className="text-center py-4 text-gray-500">
+                      ยังไม่มีการจองในระบบ
+                    </td>
+                  </tr>
+                ) : (
+                  appointments.map((a, i) => (
+                    <tr key={a.id} className="border-b hover:bg-gray-50">
+                      <td className="text-center p-3">{i + 1}</td>
+                      <td className="p-3">{a.serviceName}</td>
+                      <td className="p-3">{a.userName}</td>
+                      <td className="p-3">{a.email}</td>
+                      <td className="p-3">
+                        {a.date} / {a.time}
+                      </td>
+                      <td className="p-3 text-center space-x-2">
+                        <button
+                          onClick={() => openEditModal(a)}
+                          className="bg-yellow-500 text-white px-3 py-1 rounded-lg text-xs hover:bg-yellow-600"
+                        >
+                          <FaEdit className="inline mr-1" /> แก้ไข
+                        </button>
+                        <button
+                          onClick={() => handleDeleteAppointment(a.id)}
+                          className="bg-red-500 text-white px-3 py-1 rounded-lg text-xs hover:bg-red-600"
+                        >
+                          <FaTrash className="inline mr-1" /> ลบ
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* ส่วนจัดการคำขอคืนเงินมัดจำ */}
+        <div className="mt-12">
+          <h3 className="font-bold text-[#006680] text-2xl flex items-center gap-2 mb-3">
+            <FaBoxOpen /> คำขอคืนเงินมัดจำ
+          </h3>
+          <div className="bg-white rounded-2xl shadow-md border border-gray-100">
+            {refundRequests.length === 0 ? (
+              <p className="text-center text-gray-500 text-sm py-6">
+                ยังไม่มีคำขอคืนเงินในระบบ
+              </p>
+            ) : (
+              <table className="w-full text-left text-sm">
+                <thead className="bg-[#0288d1]/10 text-[#006680]">
+                  <tr>
+                    <th className="p-3 text-center w-12">#</th>
+                    <th className="p-3">ผู้ขอคืน</th>
+                    <th className="p-3">บริการ</th>
+                    <th className="p-3">ยอดมัดจำ</th>
+                    <th className="p-3">เหตุผล</th>
+                    <th className="p-3 text-center">สถานะ</th>
+                    <th className="p-3 text-center">การจัดการ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {refundRequests.map((r, i) => (
+                    <tr key={r.id} className="border-b hover:bg-gray-50">
+                      <td className="text-center p-3">{i + 1}</td>
+                      <td className="p-3">{r.userName || "-"}</td>
+                      <td className="p-3">{r.serviceName || "-"}</td>
+                      <td className="p-3">{r.deposit || 0} บาท</td>
+                      <td className="p-3">{r.userReason || "-"}</td>
+                      <td className="p-3 text-center">
+                        {r.status === "approved" && (
+                          <span className="text-green-600 font-semibold">
+                            อนุมัติแล้ว
+                          </span>
+                        )}
+                        {r.status === "rejected" && (
+                          <span className="text-red-600 font-semibold">
+                            ปฏิเสธแล้ว
+                          </span>
+                        )}
+                        {!r.status && (
+                          <span className="text-yellow-600 font-semibold">
+                            รอดำเนินการ
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-3 text-center space-x-2">
+                        {!r.status ? (
+                          <>
+                            <button
+                              onClick={() => handleApproveRefund(r.id)}
+                              className="bg-green-500 text-white px-3 py-1 rounded-lg text-xs hover:bg-green-600"
+                            >
+                              ✅ อนุมัติ
+                            </button>
+                            <button
+                              onClick={() => handleRejectRefund(r.id)}
+                              className="bg-red-500 text-white px-3 py-1 rounded-lg text-xs hover:bg-red-600"
+                            >
+                              ❌ ไม่อนุมัติ
+                            </button>
+                          </>
+                        ) : (
+                          r.adminNote && (
+                            <p className="text-xs text-gray-600 mt-1 italic">
+                              หมายเหตุ: {r.adminNote}
+                            </p>
+                          )
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+
+        {/* Modal แก้ไขวันและเวลา */}
+        {showEditModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-white rounded-3xl shadow-2xl w-[820px] h-[520px] flex border border-[#006680]/20 overflow-hidden animate-fadeIn">
+              <div className="w-[45%] bg-[#f7fbfc] border-r border-[#dce7ea] p-5 flex flex-col items-center">
+                <h2 className="text-[#006680] font-bold text-lg mb-3">
+                  เลือกวันที่ต้องการจองใหม่
+                </h2>
+                <DatePicker
+                  selected={selectedDate}
+                  onChange={(date) => setSelectedDate(date)}
+                  locale="th"
+                  inline
+                  minDate={today}
+                  maxDate={weekMaxDate}
+                />
+              </div>
+
+              <div className="w-[55%] flex flex-col justify-between p-5">
+                <div>
+                  <h2 className="text-[#006680] font-bold text-lg text-center mb-2">
+                    เลือกเวลาที่ต้องการ
+                  </h2>
+                  {selectedDate ? (
+                    <div className="grid grid-cols-3 gap-2 max-h-[360px] overflow-y-auto p-2">
+                      {timeSlots.map((t) => {
+                        const dateStr = toLocalDateString(selectedDate);
+                        const booked = bookedTimes.find(
+                          (b) => b.time === t && b.date === dateStr
+                        );
+                        const pending = pendingTimes.find((p) => p.time === t);
+                        const isBooked = booked && !isBookedExpired(booked);
+                        const isPending = pending && !booked;
+                        const past = isPastTime(t);
+                        const disabled = isBooked || isPending || past;
+
+                        const btnClass = `relative py-2 rounded-lg text-sm font-medium border transition ${
+                          disabled
+                            ? "bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed"
+                            : selectedTime === t
+                            ? "bg-[#0289a7] text-white border-[#0289a7]"
+                            : "border-[#0289a7] text-[#0289a7] hover:bg-[#0289a7]/10 cursor-pointer"
+                        }`;
+
+                        return (
+                          <button
+                            key={t}
+                            disabled={disabled}
+                            onClick={() => !disabled && setSelectedTime(t)}
+                            className={btnClass}
+                          >
+                            {t}
+                            {isBooked && (
+                              <span className="absolute top-1 right-1 text-[10px] bg-red-500 text-white rounded px-1">
+                                ถูกจองแล้ว
+                              </span>
+                            )}
+                            {isPending && (
+                              <span className="absolute top-1 right-1 text-[10px] bg-yellow-500 text-white rounded px-1">
+                                มีคนกำลังจอง
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-center text-gray-500 mt-4">
+                      กรุณาเลือกวันที่ก่อน
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex justify-center gap-4 mt-4">
+                  <button
+                    onClick={() => setShowEditModal(false)}
+                    className="cursor-pointer bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2 rounded-full font-semibold transition"
+                  >
+                    ยกเลิก
+                  </button>
+                  <button
+                    onClick={handleSaveEdit}
+                    className={`cursor-pointer bg-[#006680] hover:bg-[#0289a7] text-white px-8 py-2 rounded-full font-semibold transition ${
+                      !selectedDate || !selectedTime
+                        ? "opacity-60 pointer-events-none"
+                        : ""
+                    }`}
+                  >
+                    ยืนยันการแก้ไข
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const handleApproveRefund = async (id) => {
+    const { value: reason } = await Swal.fire({
+      title: "อนุมัติคำขอคืนเงิน",
+      input: "textarea",
+      inputLabel: "ระบุเหตุผลหรือรายละเอียดเพิ่มเติม (ถ้ามี)",
+      inputPlaceholder: "เช่น ตรวจสอบแล้ว คืนเงินเต็มจำนวน",
+      inputAttributes: { "aria-label": "Reason" },
+      showCancelButton: true,
+      confirmButtonText: "ยืนยันอนุมัติ",
+      cancelButtonText: "ยกเลิก",
+      confirmButtonColor: "#16a34a",
+      cancelButtonColor: "#9ca3af",
+      inputValidator: (value) => {
+        if (!value) return "กรุณากรอกเหตุผลก่อนอนุมัติ";
+      },
+    });
+
+    if (!reason) return;
+
+    try {
+      // ดึงข้อมูล refund request ที่เลือก
+      const refundRef = doc(db, "refundRequests", id);
+      const refundSnap = await getDoc(refundRef);
+      if (!refundSnap.exists()) {
+        Swal.fire("ผิดพลาด", "ไม่พบคำขอคืนเงินนี้ในระบบ", "error");
+        return;
+      }
+
+      const refundData = refundSnap.data();
+      const appointmentId = refundData?.appointmentId;
+
+      // Transaction: ลบการจองและ pending ที่เกี่ยวข้อง
+      await runTransaction(db, async (transaction) => {
+        let apptRef = doc(db, "appointments", appointmentId);
+        let pendingRef = doc(db, "pendingBookings", appointmentId);
+        const apptSnap = await transaction.get(apptRef);
+        const pendingSnap = await transaction.get(pendingRef);
+
+        transaction.update(refundRef, {
+          status: "approved",
+          adminNote: reason,
+          processedAt: serverTimestamp(),
+        });
+
+        if (apptSnap.exists()) transaction.delete(apptRef);
+        if (pendingSnap.exists()) transaction.delete(pendingRef);
+      });
+
+      // ลบ pendingBookings ที่มี appointmentId ตรงกัน (กันทับเวลา)
+      const q1 = query(
+        collection(db, "pendingBookings"),
+        where("appointmentId", "==", appointmentId)
+      );
+      const snap1 = await getDocs(q1);
+      snap1.forEach(
+        async (d) => await deleteDoc(doc(db, "pendingBookings", d.id))
+      );
+
+      // ลบ document refundRequests ของบริการนั้นออกจากระบบ (จุดสำคัญ)
+      await deleteDoc(refundRef);
+
+      Swal.fire(
+        "สำเร็จ!",
+        "อนุมัติคำขอคืนเงิน ยกเลิกคิว และลบข้อมูลคำขอคืนเงินเรียบร้อยแล้ว",
+        "success"
+      );
+
+      // โหลดข้อมูลใหม่
+      await fetchRefunds();
+      await fetchAppointments();
+    } catch (err) {
+      console.error("approveRefund error:", err);
+      Swal.fire("เกิดข้อผิดพลาด!", String(err), "error");
+    }
+  };
+
+  const handleRejectRefund = async (id) => {
+    const { value: reason } = await Swal.fire({
+      title: "ปฏิเสธคำขอคืนเงิน",
+      input: "textarea",
+      inputLabel: "ระบุเหตุผลในการปฏิเสธ",
+      inputPlaceholder: "เช่น ไม่มีสิทธิ์คืนเงินตามเงื่อนไข",
+      inputAttributes: { "aria-label": "Reason" },
+      showCancelButton: true,
+      confirmButtonText: "ยืนยันการปฏิเสธ",
+      cancelButtonText: "ยกเลิก",
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#9ca3af",
+      inputValidator: (value) => {
+        if (!value) return "กรุณากรอกเหตุผลก่อนปฏิเสธ";
+      },
+    });
+
+    if (!reason) return;
+
+    try {
+      // อัปเดตคำขอคืนเงินเป็น rejected
+      await updateDoc(doc(db, "refundRequests", id), {
+        status: "rejected",
+        adminNote: reason,
+        processedAt: new Date().toISOString(),
+      });
+
+      // อ่าน refund doc เพื่อดึง appointmentId (ถ้ามี)
+      const refundDoc = await getDoc(doc(db, "refundRequests", id));
+      const refundData = refundDoc.exists() ? refundDoc.data() : null;
+
+      if (refundData?.appointmentId) {
+        // อัปเดต appointment ให้เป็นสถานะปฏิเสธการคืนเงิน
+        await updateDoc(doc(db, "appointments", refundData.appointmentId), {
+          status: "refund_rejected",
+          refundAdminNote: reason,
+          refundProcessedAt: new Date().toISOString(),
+        });
+      }
+
+      Swal.fire("บันทึกแล้ว!", "ปฏิเสธคำขอคืนเงินเรียบร้อย", "success");
+
+      // รีเฟรชข้อมูลบนหน้า
+      await fetchRefunds();
+      await fetchAppointments();
+    } catch (err) {
+      Swal.fire("เกิดข้อผิดพลาด!", String(err), "error");
+    }
+  };
+
   const renderContent = () => {
     if (loading)
       return (
@@ -956,6 +1523,9 @@ export default function AdminDashboard() {
         return renderManageServices();
       case "promotions":
         return renderManagePromotions();
+      case "appointments":
+        return renderManageAppointments();
+
       default:
         return (
           <div className="text-center text-gray-600 mt-10">

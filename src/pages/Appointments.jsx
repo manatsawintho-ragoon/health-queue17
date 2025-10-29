@@ -9,13 +9,14 @@ import {
   updateDoc,
   doc,
   addDoc,
+  onSnapshot,
+  orderBy,
 } from "firebase/firestore";
 import Swal from "sweetalert2";
 import DatePicker, { registerLocale } from "react-datepicker";
 import th from "date-fns/locale/th";
 import "react-datepicker/dist/react-datepicker.css";
-import { FaClock } from "react-icons/fa";
-// EMAILJS
+import { FaClock, FaUndoAlt, FaInfoCircle } from "react-icons/fa";
 import emailjs from "emailjs-com";
 
 registerLocale("th", th);
@@ -25,24 +26,52 @@ export default function Appointments() {
   const [loading, setLoading] = useState(true);
   const user = JSON.parse(localStorage.getItem("user"));
 
-  // Modal / edit state (reuse Booking modal UI)
   const modalRef = useRef(null);
   const [showModal, setShowModal] = useState(false);
-  const [editingAppt, setEditingAppt] = useState(null); // appointment object being edited
+  const [editingAppt, setEditingAppt] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState("");
   const [timeSlots, setTimeSlots] = useState([]);
-  const [bookedTimes, setBookedTimes] = useState([]); // for the selectedDate
+  const [bookedTimes, setBookedTimes] = useState([]);
   const [pendingTimes, setPendingTimes] = useState([]);
   const today = new Date();
   const weekMaxDate = new Date();
   weekMaxDate.setDate(today.getDate() + 6);
 
-  // ฟังก์ชันแปลงวันที่เป็น พ.ศ. ไทย (รองรับทั้ง ISO string และ YYYY-MM-DD)
+  // เพิ่ม state ด้านบน
+  const [refunds, setRefunds] = useState([]);
+
+  // realtime listener สำหรับคำขอคืนของผู้ใช้ (จะอัปเดตทันทีเมื่อ admin เปลี่ยนสถานะ)
+  useEffect(() => {
+    if (!user?.email) {
+      setRefunds([]);
+      return;
+    }
+
+    const q = query(
+      collection(db, "refundRequests"),
+      where("email", "==", user.email)
+      // ถ้าต้องการเรียง: , orderBy("createdAt","desc") (ต้องสร้าง index ถ้าจำเป็น)
+    );
+
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setRefunds(list);
+      },
+      (err) => {
+        console.error("onSnapshot refunds error:", err);
+      }
+    );
+
+    return () => unsub();
+  }, [user?.email]);
+
+  // แปลงวันที่ไทย
   const formatThaiDate = (isoDate) => {
     if (!isoDate) return "-";
     let date;
-    // ถ้าเป็นรูปแบบ YYYY-MM-DD ให้ parse
     if (typeof isoDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
       const [y, m, d] = isoDate.split("-").map(Number);
       date = new Date(y, m - 1, d);
@@ -77,7 +106,7 @@ export default function Appointments() {
     return new Date(y, m - 1, d);
   };
 
-  // สร้างช่วงเวลา (เหมือน Booking.jsx)
+  // สร้างช่วงเวลา
   const generateTimeSlots = (day) => {
     let slots = [];
     let startHour, endHour;
@@ -89,48 +118,62 @@ export default function Appointments() {
       endHour = 20;
     }
     for (let h = startHour; h < endHour; h++) {
-      if (h === 12) continue; // ข้ามพักเที่ยง
+      if (h === 12) continue;
       slots.push(`${h.toString().padStart(2, "0")}:00`);
     }
     return slots;
   };
 
-  // โหลด appointments ของ user (ไม่ real-time ตามที่คุณระบุไว้ก่อนหน้า)
+  // โหลด appointments แบบ realtime (onSnapshot) — จะแสดงการเปลี่ยนแปลงเมื่อ Admin แก้/ลบ
   useEffect(() => {
-    const fetchAppointments = async () => {
-      try {
-        setLoading(true);
-        if (!user?.email) {
-          setAppointments([]);
-          return;
-        }
-        const q = query(
-          collection(db, "appointments"),
-          where("email", "==", user.email)
-        );
-        const snap = await getDocs(q);
+    if (!user?.email) {
+      setAppointments([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    const q = query(
+      collection(db, "appointments"),
+      where("email", "==", user.email)
+      // ถ้าต้องการเรียง สามารถเพิ่ม orderBy("date","asc") แต่ต้องมี index ใน Firestore
+    );
+
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
         const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        setAppointments(list);
-      } catch (e) {
-        console.error("fetchAppointments error:", e);
-        Swal.fire("เกิดข้อผิดพลาด", "ไม่สามารถโหลดการจองได้", "error");
-      } finally {
+        const normalized = list.map((item) => ({
+          ...item,
+          userId: item.userId || user?.uid || "",
+          status: item.status || "active",
+        }));
+        setAppointments(normalized);
         setLoading(false);
+      },
+      (err) => {
+        console.error("onSnapshot appointments error:", err);
+        setLoading(false);
+        Swal.fire(
+          "เกิดข้อผิดพลาด",
+          "ไม่สามารถโหลดการจองแบบ realtime ได้",
+          "error"
+        );
       }
-    };
-    fetchAppointments();
+    );
+
+    return () => unsub();
   }, [user?.email]);
 
-  // ฟังก์ชันคำนวณว่าเหลืออีกเท่าไหร่จนถึงเวลานัด
+  // ฟังก์ชันคำนวณเวลาคงเหลือ
   const timeUntil = (dateStr, timeStr) => {
     if (!dateStr || !timeStr) return null;
-    // dateStr expected "YYYY-MM-DD", timeStr "HH:MM"
     const [y, m, d] = dateStr.split("-").map(Number);
     const [hh, mm] = timeStr.split(":").map(Number);
     const appt = new Date(y, m - 1, d, hh, mm, 0);
     const now = new Date();
     const diffMs = appt.getTime() - now.getTime();
-    if (diffMs <= 0) return 0; // ถึงเวลาแล้วหรือเลย
+    if (diffMs <= 0) return 0;
     const diffMin = Math.floor(diffMs / 60000);
     const days = Math.floor(diffMin / (60 * 24));
     const hours = Math.floor((diffMin % (60 * 24)) / 60);
@@ -138,20 +181,18 @@ export default function Appointments() {
     return { days, hours, minutes };
   };
 
-  // แสดงสถานะเป็นข้อความตามที่ขอ
+  // แสดงสถานะเวลา
   const renderTimeStatus = (a) => {
     const tu = timeUntil(a.date, a.time);
     if (tu === null) return "-";
+    if (a.status === "refund_pending")
+      return "กำลังขอยกเลิกการจองเพื่อขอคืนเงินมัดจำ";
     if (tu === 0) {
-      // ถึงเวลานัดแล้ว (เวลาเท่าหรือเลย)
-      // ถ้ามากกว่า 60 นาทีผ่านมาแล้ว อาจจะถือเป็น "เลยเวลาแล้ว" — แต่ผู้ขอระบุแค่ว่า "ถึงเวลานัดแล้ว"
-      // เราจะแสดง "ถึงเวลานัดแล้ว" ถ้าเวลามากกว่าหรือเท่าคืนนี้
       const [y, m, d] = a.date.split("-").map(Number);
       const [hh, mm] = a.time.split(":").map(Number);
       const appt = new Date(y, m - 1, d, hh, mm);
       const now = new Date();
       const diff = now.getTime() - appt.getTime();
-      // ถ้าเลยมากกว่า 60 นาที -> "หมดเวลาแล้ว"
       if (diff > 60 * 60 * 1000) return "หมดเวลาแล้ว";
       return "ถึงเวลานัดแล้ว";
     }
@@ -162,7 +203,7 @@ export default function Appointments() {
     return `อีก ${parts.join(" ")}`;
   };
 
-  // --- Modal: เมื่อเปิด modal ให้โหลด bookedTimes + pendingTimes สำหรับ selectedDate ---
+  // โหลด slot วันใหม่
   useEffect(() => {
     const loadSlotsForDate = async () => {
       if (!selectedDate) return;
@@ -173,7 +214,6 @@ export default function Appointments() {
       const dateStr = toLocalDateString(selectedDate);
 
       try {
-        // appointments on date
         const qApp = query(
           collection(db, "appointments"),
           where("date", "==", dateStr)
@@ -182,7 +222,6 @@ export default function Appointments() {
         const appArr = snapA.docs.map((d) => ({ id: d.id, ...d.data() }));
         setBookedTimes(appArr);
 
-        // pendingBookings on date
         const qP = query(
           collection(db, "pendingBookings"),
           where("date", "==", dateStr)
@@ -202,10 +241,8 @@ export default function Appointments() {
       }
     };
     loadSlotsForDate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate]);
 
-  // helper convert Date -> YYYY-MM-DD
   const toLocalDateString = (date) => {
     if (!date) return "";
     const d = new Date(date);
@@ -215,7 +252,6 @@ export default function Appointments() {
     return `${year}-${month}-${day}`;
   };
 
-  // helper: ตรวจว่า slot เป็นอดีต (เหมือน Booking.jsx)
   const isPastTime = (slotTime) => {
     if (!selectedDate) return false;
     const now = new Date();
@@ -233,21 +269,17 @@ export default function Appointments() {
     return false;
   };
 
-  // เมื่อกดปุ่ม 'แก้ไขวันและเวลา' บนการ์ด
+  // เปิด modal แก้ไข
   const openEditModal = (appt) => {
-    // ถ้าผู้ใช้แก้แล้ว ให้ไม่ให้เปิด (ความปลอดภัย)
-    if (appt?.editedOnce) {
-      return;
-    }
+    if (appt?.editedOnce) return;
     setEditingAppt(appt);
-    // prefill selectedDate/time จาก appt
     const d = parseDateFromString(appt.date);
     setSelectedDate(d || null);
     setSelectedTime(appt.time || "");
     setShowModal(true);
   };
 
-    //  ฟังก์ชันส่งอีเมลยืนยันการแก้ไขนัดหมายผ่าน EmailJS
+  // ฟังก์ชันส่งอีเมลยืนยันการแก้ไขนัดหมายผ่าน EmailJS
   const sendEditConfirmationEmail = async (apptData) => {
     try {
       const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
@@ -270,14 +302,13 @@ export default function Appointments() {
       };
 
       await emailjs.send(serviceId, templateId, templateParams, publicKey);
-      console.log("📧 Edit confirmation email sent to:", apptData.email);
+      console.log("อีเมลยืนยันการแก้ไขถูกส่งไปยัง:", apptData.email);
     } catch (err) {
-      console.error("❌ Failed to send edit confirmation email:", err);
+      console.error("ส่งอีเมลยืนยันการแก้ไขล้มเหลว:", err);
     }
   };
 
-  // ฟังก์ชันยืนยันการแก้ไข: ตรวจสอบความว่างและอัปเดต appointments doc
-  const handleConfirmEdit = async () => {
+  async function handleConfirmEdit() {
     if (!editingAppt) return;
     if (!selectedDate || !selectedTime) {
       Swal.fire("กรุณาเลือกวันและเวลา", "", "warning");
@@ -286,7 +317,6 @@ export default function Appointments() {
     const dateStr = toLocalDateString(selectedDate);
 
     try {
-      // 1) ตรวจสอบ appointments ว่าเวลานี้มีคนจองหรือไม่ (ยกเว้น doc ตัวเอง)
       const qApp = query(
         collection(db, "appointments"),
         where("date", "==", dateStr),
@@ -296,43 +326,9 @@ export default function Appointments() {
       const conflict = appSnap.docs.some((d) => d.id !== editingAppt.id);
       if (conflict) {
         Swal.fire("ขออภัย", "เวลานี้ถูกจองไปแล้ว", "warning");
-        // รีโหลด appointments
-        await reloadAppointments();
         return;
       }
 
-      // 2) ตรวจสอบ pendingBookings ว่าเวลานี้มีคนล็อกอยู่ (ไม่รวมถ้าเป็น pending ของคนเดียวกันและ service เดียวกัน)
-      const qPending = query(
-        collection(db, "pendingBookings"),
-        where("date", "==", dateStr),
-        where("time", "==", selectedTime)
-      );
-      const pSnap = await getDocs(qPending);
-      const now = new Date();
-      let someoneLocked = false;
-      for (const d of pSnap.docs) {
-        const p = d.data();
-        if (!p.expiresAt) continue;
-        const ex = new Date(p.expiresAt);
-        if (ex.getTime() > now.getTime()) {
-          // ถ้า pending มาจากผู้ใช้เดิมของ booking นี้ ให้ไม่ถือว่า conflict
-          if (
-            p.email === editingAppt.email &&
-            p.serviceId === editingAppt.serviceId
-          ) {
-            continue;
-          }
-          someoneLocked = true;
-          break;
-        }
-      }
-      if (someoneLocked) {
-        Swal.fire("ขออภัย", "เวลานี้มีคนล็อกชั่วคราวอยู่", "warning");
-        await reloadAppointments();
-        return;
-      }
-
-      // 3) อัปเดต document: date, time, set editedOnce true (ถ้ายังไม่เคยแก้)
       const apptRef = doc(db, "appointments", editingAppt.id);
       const updatePayload = {
         date: dateStr,
@@ -340,9 +336,7 @@ export default function Appointments() {
       };
       if (!editingAppt.editedOnce) updatePayload.editedOnce = true;
       await updateDoc(apptRef, updatePayload);
-
-      // ส่งอีเมลยืนยันการแก้ไข
-      // หลังจากอัปเดต Firestore เรียบร้อยแล้ว ให้ส่งอีเมลยืนยัน
+      // ส่งอีเมลยืนยันการแก้ไขวันและเวลา
       await sendEditConfirmationEmail({
         userName: editingAppt.userName,
         serviceName: editingAppt.serviceName,
@@ -351,7 +345,6 @@ export default function Appointments() {
         email: editingAppt.email,
       });
 
-      // 4) อัปเดต local state
       setAppointments((prev) =>
         prev.map((p) =>
           p.id === editingAppt.id
@@ -367,7 +360,6 @@ export default function Appointments() {
         confirmButtonColor: "#006680",
       });
 
-      // ปิด modal
       setShowModal(false);
       setEditingAppt(null);
       setSelectedDate(null);
@@ -376,34 +368,75 @@ export default function Appointments() {
       console.error("handleConfirmEdit:", err);
       Swal.fire("เกิดข้อผิดพลาด", String(err), "error");
     }
-  };
+  }
 
-  const reloadAppointments = async () => {
+  // แทนที่ฟังก์ชัน handleRefundRequest เดิมด้วยอันนี้
+  const handleRefundRequest = async (appointment) => {
+    const { value: reason } = await Swal.fire({
+      title: "กรุณากรอกเหตุผลการขอยกเลิก",
+      input: "textarea",
+      inputPlaceholder: "อธิบายเหตุผลที่ต้องการขอยกเลิกการจอง...",
+      inputAttributes: {
+        "aria-label": "เหตุผลขอยกเลิก",
+      },
+      showCancelButton: true,
+      confirmButtonText: "ส่งคำขอ",
+      cancelButtonText: "ยกเลิก",
+      confirmButtonColor: "#d33",
+    });
+
+    if (!reason) {
+      // ผู้ใช้ยกเลิกหรือไม่กรอกเหตุผล
+      return;
+    }
+
     try {
-      if (!user?.email) return;
-      const q = query(
-        collection(db, "appointments"),
-        where("email", "==", user.email)
+      // อัปเดตสถานะใน appointments
+      await updateDoc(doc(db, "appointments", appointment.id), {
+        status: "refund_pending",
+      });
+
+      // สร้างเอกสารใน refundRequests (เก็บ appointmentId เพื่ออ้างอิงในฝั่ง admin)
+      await addDoc(collection(db, "refundRequests"), {
+        appointmentId: appointment.id,
+        userName: appointment.userName || user?.fullName || "ไม่ระบุชื่อ",
+        email: appointment.email || user?.email || "",
+        serviceName: appointment.serviceName,
+        date: appointment.date,
+        time: appointment.time,
+        deposit: appointment.deposit || 0,
+        userReason: reason,
+        adminNote: "", // ให้ admin ใส่เหตุผลเมื่ออนุมัติ/ปฏิเสธ
+        status: null, // null / "approved" / "rejected"
+        createdAt: new Date().toISOString(),
+      });
+
+      // อัปเดต local state เพื่อรีเฟรชหน้าเร็ว ๆ
+      setAppointments((prev) =>
+        prev.map((p) =>
+          p.id === appointment.id ? { ...p, status: "refund_pending" } : p
+        )
       );
-      const snap = await getDocs(q);
-      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setAppointments(list);
-    } catch (e) {
-      console.error("reloadAppointments:", e);
+
+      Swal.fire("ส่งคำขอแล้ว", "กรุณารอการอนุมัติจากแอดมิน", "success");
+    } catch (err) {
+      console.error("handleRefundRequest error:", err);
+      Swal.fire("เกิดข้อผิดพลาด", "ไม่สามารถส่งคำขอได้", "error");
     }
   };
 
-  // click outside modal to close
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (modalRef.current && !modalRef.current.contains(event.target)) {
-        setShowModal(false);
-        setEditingAppt(null);
-      }
-    };
-    if (showModal) document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showModal]);
+  const findRefundForAppointment = (appointment) => {
+    if (!appointment) return null;
+    return (
+      refunds.find(
+        (r) =>
+          r.appointmentId === appointment.id ||
+          (r.date === appointment.date &&
+            r.time === appointment.time &&
+            r.serviceName === appointment.serviceName)
+      ) || null
+    );
+  };
 
   if (loading)
     return (
@@ -414,111 +447,321 @@ export default function Appointments() {
       </MainLayout>
     );
 
+  const activeAppointments = appointments.filter(
+    (a) => renderTimeStatus(a) !== "หมดเวลาแล้ว"
+  );
+  const expiredAppointments = appointments.filter(
+    (a) => renderTimeStatus(a) === "หมดเวลาแล้ว"
+  );
+
   return (
     <MainLayout>
       <div className="min-h-screen bg-[#f4fbfc] py-10 px-5">
-        <h1 className="text-2xl font-bold text-[#006680] text-center mb-6">
+        <h1 className="text-2xl font-bold text-[#006680] text-center mb-8">
           การจองของฉัน
         </h1>
 
-        {appointments.length === 0 ? (
-          <div className="text-center text-gray-500 mt-10">
-            <p>ยังไม่มีการจองในระบบ</p>
+        {/* ------------------- ป้ายกฎการใช้งาน ------------------- */}
+        <div className="max-w-5xl mx-auto bg-[#e0f7fa] border-l-4 border-[#0289a7] rounded-2xl p-5 mb-8 shadow-sm">
+          <div className="flex items-start">
+            <FaInfoCircle className="text-[#0289a7] w-6 h-6 mt-1 mr-3 flex-shrink-0" />
+            <div>
+              <h3 className="text-lg font-bold text-[#006680] mb-2">
+                กฎและเงื่อนไขการจอง
+              </h3>
+              <ul className="list-disc list-inside text-gray-700 text-sm leading-relaxed space-y-1">
+                <li>
+                  การแก้ไขวันและเวลาการจอง{" "}
+                  <span className="font-semibold text-[#006680]">
+                    สามารถทำได้เพียง 1 ครั้ง
+                  </span>{" "}
+                  เท่านั้น
+                </li>
+                <li>
+                  เมื่อกด{" "}
+                  <span className="font-semibold text-[#d93025]">
+                    แก้ไขวันและเวลา
+                  </span>{" "}
+                  แล้ว จะไม่สามารถ{" "}
+                  <span className="font-semibold text-[#d93025]">
+                    ขอยกเลิกเพื่อคืนเงินมัดจำ
+                  </span>{" "}
+                  ได้อีก
+                </li>
+                <li>
+                  บริการที่{" "}
+                  <span className="font-semibold text-gray-800">
+                    หมดเวลาแล้ว
+                  </span>{" "}
+                  จะไม่สามารถ{" "}
+                  <span className="font-semibold text-[#d93025]">แก้ไข</span>{" "}
+                  หรือ{" "}
+                  <span className="font-semibold text-[#d93025]">ยกเลิก</span>{" "}
+                  ได้
+                </li>
+                <li>
+                  เมื่อกดยกเลิก ระบบจะส่งคำขอคืนเงินไปยังผู้ดูแลระบบ (Admin)
+                  เพื่อรอการอนุมัติ
+                </li>
+                <li>
+                  เมื่อได้รับการยืนยันแล้ว การ{" "}
+                  <span className="font-semibold text-gray-800">
+                    แก้ไขหรือยกเลิก
+                  </span>{" "}
+                  จะไม่สามารถย้อนกลับได้
+                </li>
+              </ul>
+            </div>
           </div>
-        ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 max-w-6xl mx-auto">
-            {appointments.map((a) => {
-              const remainingPayment = a.price ? a.price - (a.deposit || 0) : 0;
-              const status = renderTimeStatus(a);
-              const edited = !!a.editedOnce;
+        </div>
 
-              return (
-                <div
-                  key={a.id}
-                  className="bg-white rounded-2xl shadow-md border border-gray-200 p-5 flex flex-col justify-between transition hover:shadow-lg"
-                >
-                  <div>
-                    {a.image && (
-                      <img
-                        src={a.image}
-                        alt={a.serviceName}
-                        className="w-full h-40 object-cover rounded-xl mb-3 border border-gray-100"
-                      />
-                    )}
+        {/* ------------------- กลุ่มยังไม่หมดเวลา ------------------- */}
+        <section className="max-w-6xl mx-auto mb-10">
+          <h2 className="text-xl font-semibold text-[#006680] mb-3">
+            บริการที่ยังไม่หมดเวลา
+          </h2>
 
-                    <h3 className="text-lg font-bold text-[#006680] mb-2">
-                      {a.serviceName}
-                    </h3>
-                    {a.description && (
-                      <p className="text-sm text-gray-600 line-clamp-3 mb-2">
-                        {a.description}
+          {activeAppointments.length === 0 ? (
+            <div className="text-center text-gray-500 py-10 bg-white rounded-2xl shadow">
+              ยังไม่มีบริการที่อยู่ในช่วงเวลานัดหมาย
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {activeAppointments.map((a) => {
+                const remainingPayment = a.price
+                  ? a.price - (a.deposit || 0)
+                  : 0;
+                const status = renderTimeStatus(a);
+                const edited = !!a.editedOnce;
+
+                return (
+                  <div
+                    key={a.id}
+                    className="bg-white rounded-2xl shadow-md border border-gray-200 p-5 flex flex-col justify-between transition hover:shadow-lg"
+                  >
+                    <div>
+                      {a.image && (
+                        <img
+                          src={a.image}
+                          alt={a.serviceName}
+                          className="w-full h-40 object-cover rounded-xl mb-3 border border-gray-100"
+                        />
+                      )}
+
+                      <h3 className="text-lg font-bold text-[#006680] mb-2">
+                        {a.serviceName}
+                      </h3>
+                      {a.description && (
+                        <p className="text-sm text-gray-600 line-clamp-3 mb-2">
+                          {a.description}
+                        </p>
+                      )}
+
+                      <p className="text-sm text-gray-700">
+                        <b>วันที่:</b> {formatThaiDate(a.date)}
                       </p>
-                    )}
+                      <p className="text-sm text-gray-700">
+                        <b>เวลา:</b> {a.time} น.
+                      </p>
+                      <p className="text-sm text-gray-700 mt-1">
+                        <b>เบอร์โทร:</b> {a.phone}
+                      </p>
 
-                    <p className="text-sm text-gray-700">
-                      <b>วันที่:</b> {formatThaiDate(a.date)}
-                    </p>
-                    <p className="text-sm text-gray-700"><b>เวลา:</b> {a.time} น.</p>
-                    <p className="text-sm text-gray-700 mt-1">
-                      <b>เบอร์โทร:</b> {a.phone}
-                    </p>
+                      <p className="text-sm text-gray-700 mt-1">
+                        <b>มัดจำแล้ว:</b>{" "}
+                        <span className="font-semibold text-[#0289a7]">
+                          <s>{a.deposit ?? 0} บาท</s>
+                        </span>
+                      </p>
 
-                    <p className="text-sm text-gray-700 mt-1">
-                      <b>มัดจำแล้ว:</b>{" "}
-                      <span className="font-semibold text-[#0289a7]">
-                        <s>{a.deposit ?? 0} บาท</s>
-                      </span>
-                    </p>
+                      <p className="text-sm text-gray-700 mt-1">
+                        <b>ชำระที่คลินิกเพิ่มเติม:</b>{" "}
+                        <span className="font-bold text-[#d97706]">
+                          {remainingPayment > 0 ? remainingPayment : 0} บาท
+                        </span>
+                      </p>
 
-                    <p className="text-sm text-gray-700 mt-1">
-                      <b>ชำระที่คลินิกเพิ่มเติม:</b>{" "}
-                      <span className="font-bold text-[#d97706]">
-                        {remainingPayment > 0 ? remainingPayment : 0} บาท
-                      </span>
-                    </p>
+                      <div className="mt-3">
+                        <span
+                          className={`inline-block px-3 py-1 text-xs rounded-full font-semibold ${
+                            status === "ถึงเวลานัดแล้ว"
+                              ? "bg-[#fff3cd] text-[#856404]"
+                              : status.includes("ขอยกเลิก")
+                              ? "bg-[#fdecea] text-[#d93025]"
+                              : "bg-[#e0f7fa] text-[#006680]"
+                          }`}
+                        >
+                          {status}
+                        </span>
+                      </div>
+                    </div>
 
-                    <div className="mt-3">
-                      <span
-                        className={`inline-block px-3 py-1 text-xs rounded-full font-semibold ${
-                          status === "ถึงเวลานัดแล้ว"
-                            ? "bg-[#fff3cd] text-[#856404]"
-                            : status === "หมดเวลาแล้ว"
-                            ? "bg-gray-200 text-gray-500"
-                            : "bg-[#e0f7fa] text-[#006680]"
-                        }`}
-                      >
-                        {status}
-                      </span>
+                    <div className="flex justify-end mt-4 gap-3">
+                      {/* กรณีอยู่ระหว่างขอคืนเงิน */}
+                      {(() => {
+                        const refund = findRefundForAppointment(a);
+
+                        if (refund) {
+                          if (refund.status === "approved") {
+                            // ได้รับการคืนเงินแล้ว
+                            return (
+                              <div className="text-center mt-3">
+                                <span className="inline-block bg-green-100 text-green-700 px-3 py-1 text-xs rounded-full font-semibold">
+                                  ได้รับการคืนเงินแล้ว
+                                </span>
+                                <p className="text-xs text-gray-500 mt-1 italic">
+                                  การจองนี้ถูกยกเลิกแล้ว
+                                  ไม่สามารถแก้ไขหรือใช้งานต่อได้
+                                </p>
+                              </div>
+                            );
+                          }
+
+                          if (refund.status === "rejected") {
+                            //  ถูกปฏิเสธการคืนเงิน
+                            return (
+                              <div className="flex flex-col items-start mt-2">
+                                <span className="inline-block bg-red-100 text-red-700 px-3 py-1 text-xs rounded-full font-semibold">
+                                  ถูกปฏิเสธการคืนเงิน
+                                </span>
+                                {refund.adminNote && (
+                                  <p className="text-xs text-gray-600 mt-1 italic">
+                                    เหตุผล: {refund.adminNote}
+                                  </p>
+                                )}
+
+                                {!a.editedOnce ? (
+                                  <button
+                                    onClick={() => openEditModal(a)}
+                                    className="mt-3 bg-[#006680] hover:bg-[#0289a7] text-white text-sm px-4 py-1 rounded-full transition font-semibold"
+                                  >
+                                    แก้ไขวันและเวลา
+                                  </button>
+                                ) : (
+                                  <p className="text-xs text-gray-500 mt-2 italic">
+                                    คุณได้แก้ไขวัน–เวลาแล้ว ไม่สามารถแก้ซ้ำได้
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          }
+
+                          // ⏳ รอการอนุมัติ (pending/null)
+                          return (
+                            <span className="text-sm text-gray-600 italic flex items-center">
+                              <FaUndoAlt className="mr-2 text-[#d93025]" />
+                              รอการอนุมัติคืนเงินมัดจำ
+                            </span>
+                          );
+                        }
+
+                        // 🟦 กรณีไม่มีคำขอคืนเงิน
+                        return (
+                          <>
+                            <button
+                              onClick={() => openEditModal(a)}
+                              disabled={a.editedOnce}
+                              className={`text-sm px-4 py-1 rounded-full transition font-semibold ${
+                                a.editedOnce
+                                  ? "bg-gray-300 text-gray-600 cursor-not-allowed"
+                                  : "bg-[#006680] hover:bg-[#0289a7] text-white"
+                              }`}
+                              title={
+                                a.editedOnce
+                                  ? "คุณได้แก้ไขวัน-เวลาแล้ว ไม่สามารถแก้ไขซ้ำได้"
+                                  : "แก้ไขวันและเวลา (สามารถแก้ได้ 1 ครั้ง)"
+                              }
+                            >
+                              {a.editedOnce ? "แก้ไขแล้ว" : "แก้ไขวันและเวลา"}
+                            </button>
+
+                            {!a.editedOnce && (
+                              <button
+                                onClick={() => handleRefundRequest(a)}
+                                className="text-sm px-4 py-1 rounded-full transition font-semibold bg-red-500 hover:bg-red-600 text-white"
+                              >
+                                ขอยกเลิกการจอง
+                              </button>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
-                  <div className="flex justify-end mt-4 gap-3">
-                    {/* Edit button (แก้ไขวันและเวลา) */}
-                    <button
-                      onClick={() => openEditModal(a)}
-                      disabled={edited}
-                      className={`text-sm px-4 py-1 rounded-full transition font-semibold ${
-                        edited
-                          ? "bg-gray-300 text-gray-600 cursor-not-allowed"
-                          : "bg-[#006680] hover:bg-[#0289a7] text-white"
-                      }`}
-                      title={
-                        edited
-                          ? "คุณได้แก้ไขวัน-เวลาแล้ว ไม่สามารถแก้ไขซ้ำได้"
-                          : "แก้ไขวันและเวลา (สามารถแก้ได้ 1 ครั้ง)"
-                      }
-                    >
-                      {edited ? "แก้ไขแล้ว" : "แก้ไขวันและเวลา"}
-                    </button>
+        {/* ------------------- กลุ่มหมดเวลาแล้ว ------------------- */}
+        <section className="max-w-6xl mx-auto">
+          <h2 className="text-xl font-semibold text-red-600 mb-3">
+            บริการที่หมดเวลาแล้ว
+          </h2>
+
+          {expiredAppointments.length === 0 ? (
+            <div className="text-center text-gray-500 py-10 bg-white rounded-2xl shadow">
+              ยังไม่มีบริการที่หมดเวลา
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {expiredAppointments.map((a) => {
+                const remainingPayment = a.price
+                  ? a.price - (a.deposit || 0)
+                  : 0;
+
+                return (
+                  <div
+                    key={a.id}
+                    className="bg-gray-100 rounded-2xl shadow border border-gray-300 p-5 flex flex-col justify-between"
+                  >
+                    <div>
+                      {a.image && (
+                        <img
+                          src={a.image}
+                          alt={a.serviceName}
+                          className="w-full h-40 object-cover rounded-xl mb-3 border border-gray-200 opacity-80"
+                        />
+                      )}
+                      <h3 className="text-lg font-bold text-gray-700 mb-2">
+                        {a.serviceName}
+                      </h3>
+
+                      <p className="text-sm text-gray-600">
+                        <b>วันที่:</b> {formatThaiDate(a.date)}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        <b>เวลา:</b> {a.time} น.
+                      </p>
+                      <p className="text-sm text-gray-600 mt-1">
+                        <b>มัดจำแล้ว:</b> <s>{a.deposit ?? 0} บาท</s>
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        <b>ชำระที่คลินิกเพิ่มเติม:</b> {remainingPayment} บาท
+                      </p>
+
+                      <span className="inline-block mt-3 bg-gray-300 text-gray-700 text-xs px-3 py-1 rounded-full font-semibold">
+                        หมดเวลาแล้ว
+                      </span>
+                    </div>
+
+                    <div className="flex justify-end mt-4">
+                      <button
+                        onClick={() => handleDeleteAppointment(a.id)}
+                        className="bg-red-500 hover:bg-red-600 text-white text-sm px-4 py-1 rounded-full transition font-semibold"
+                      >
+                        ลบออก
+                      </button>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                );
+              })}
+            </div>
+          )}
+        </section>
       </div>
-
-      {/* Modal (ใช้ UI/โครงแบบเดียวกับ Booking.jsx) */}
+      {/* ------------------- Modal ------------------- */}
       {showModal && editingAppt && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
           <div
@@ -529,6 +772,7 @@ export default function Appointments() {
               <h2 className="text-[#006680] font-bold text-lg mb-3">
                 เลือกวันที่ต้องการจองใหม่
               </h2>
+
               <div className="bg-white border border-[#d7e9ec] rounded-xl p-3 shadow-sm mb-4 flex flex-col items-center">
                 <FaClock className="text-[#0289a7] w-5 h-5 mb-1" />
                 <p className="text-sm text-[#0289a7] font-semibold">
@@ -550,19 +794,6 @@ export default function Appointments() {
                 inline
                 minDate={today}
                 maxDate={weekMaxDate}
-                renderCustomHeader={() => (
-                  <div className="text-[#006680] font-semibold text-lg mb-2">
-                    {selectedDate
-                      ? new Date(selectedDate).toLocaleString("th-TH", {
-                          month: "long",
-                          year: "numeric",
-                        })
-                      : new Date().toLocaleString("th-TH", {
-                          month: "long",
-                          year: "numeric",
-                        })}
-                  </div>
-                )}
               />
             </div>
 
@@ -591,7 +822,6 @@ export default function Appointments() {
                       const isPending = !!pendingEntry && !bookedEntry;
                       const past = isPastTime(t);
                       const isLunch = t === "12:00" || t === "12:30";
-
                       const disabled = past || isBooked || isPending || isLunch;
 
                       const baseClass = `relative py-2 rounded-lg text-sm font-medium border transition ${
@@ -662,9 +892,8 @@ export default function Appointments() {
     </MainLayout>
   );
 
-  // --- helper functions below ---
+  // ------------------- Helper Functions -------------------
 
-  // helper: check if a booked slot should be shown as expired (>= 60 minutes past its start)
   function isBookedExpired(bookedEntry) {
     if (!bookedEntry) return false;
     try {
