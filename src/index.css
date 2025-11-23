@@ -33,6 +33,74 @@
     transform: translateY(0);
   }
 }
+
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.fade-up {
+  opacity: 0;
+  transform: translateY(14px) scale(0.995);
+  transition: opacity 520ms cubic-bezier(.2,.9,.25,1), transform 520ms cubic-bezier(.2,.9,.25,1);
+  will-change: opacity, transform;
+}
+
+.fade-up.in-view {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+
+.fade-up.stagger-1.in-view { transition-delay: 0ms; }
+.fade-up.stagger-2.in-view { transition-delay: 80ms; }
+.fade-up.stagger-3.in-view { transition-delay: 160ms; }
+
+
+.article-highlight {
+  box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+  transform: translateY(-4px);
+  transition: transform 220ms ease, box-shadow 220ms ease;
+}
+
+.no-scrollbar { overflow: hidden; }
+
+/* animation helpers ที่ใช้โดย AnimateSection */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 .animate-fadeIn {
-  animation: fadeIn 0.2s ease-in-out;
+  animation: fadeIn 700ms cubic-bezier(.2,.9,.2,1) both;
+}
+
+/* small helper classes if not using tailwind */
+.opacity-0 { opacity: 0; }
+.opacity-100 { opacity: 1; }
+.translate-y-6 { transform: translateY(1.5rem); }
+.translate-y-0 { transform: translateY(0); }
+.transition-all { transition: all 0.6s cubic-bezier(.2,.8,.2,1); }
+.duration-700 { transition-duration: 700ms; }
+
+/* preserve your existing styles (you told me to remember these) */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-5px);} to { opacity:1; transform: translateY(0);} }
+.animate-fadeIn { animation: fadeIn 0.3s ease-in-out; }
+
+/* your index.css content (kept) */
+* {
+    font-family: 'Kanit', sans-serif;
+}
+*::-webkit-scrollbar { display: none; }
+* { -ms-overflow-style: none; scrollbar-width: none; }
+.service-card { position: relative; z-index: 10; }
+.carousel-container { overflow: visible !important; }
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
 }

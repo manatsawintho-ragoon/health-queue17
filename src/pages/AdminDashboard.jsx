@@ -34,6 +34,8 @@ import {
   FaSave,
   FaTimes,
   FaPercent,
+  FaCheck,
+  FaWindowClose,
 } from "react-icons/fa";
 import DatePicker, { registerLocale } from "react-datepicker";
 import th from "date-fns/locale/th";
@@ -199,6 +201,40 @@ export default function AdminDashboard() {
     image: "",
     recommend: false,
   });
+
+  // News management state
+  const [news, setNews] = useState([]);
+  const [newsForm, setNewsForm] = useState({
+    title: "",
+    tag: "",
+    short: "",
+    detail: "",
+    image: "",
+    link: "",
+  });
+  const [showNewsModal, setShowNewsModal] = useState(false);
+  const [isEditingNews, setIsEditingNews] = useState(false);
+  const [editNewsId, setEditNewsId] = useState(null);
+  const placeholderNewsImg =
+    "/mnt/data/acbe4f52-71f5-421f-a9d2-f41a65595d35.png";
+
+  // fetch news from Firestore
+  const fetchNews = async () => {
+    try {
+      const snap = await getDocs(collection(db, "news"));
+      const list = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => {
+          const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return tb - ta;
+        });
+      setNews(list);
+    } catch (err) {
+      console.error("Error fetching news:", err);
+    }
+  };
+
   const [showPromoModal, setShowPromoModal] = useState(false);
   const [isEditingPromo, setIsEditingPromo] = useState(false);
   const [editPromoId, setEditPromoId] = useState(null);
@@ -207,9 +243,44 @@ export default function AdminDashboard() {
   const [refundRequests, setRefundRequests] = useState([]);
   const [limitCount, setLimitCount] = useState(10);
 
+  // replace fetchAppointments in AdminDashboard.jsx with this
   const fetchAppointments = async () => {
-    const snapshot = await getDocs(collection(db, "appointments"));
-    setAppointments(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
+    try {
+      // ดึง appointments ทั้งหมด
+      const snapA = await getDocs(collection(db, "appointments"));
+      const appts = snapA.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+      // ดึง users ที่เป็นหมอ (เก็บเป็น map id -> fullName)
+      const snapU = await getDocs(collection(db, "users"));
+      const usersList = snapU.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const doctorMap = {};
+      usersList.forEach((u) => {
+        if (u.role === "หมอ") {
+          // เก็บทั้ง fullName และ prefix ถ้าต้องการ
+          doctorMap[u.id] = `${u.prefix ? u.prefix : ""}${
+            u.fullName || ""
+          }`.trim();
+        }
+        // ถาต้องการเก็บทุก user ก็สามารถเก็บได้เช่นกัน:
+        // doctorMap[u.id] = u.fullName || "";
+      });
+
+      // ผสานชื่อหมอเข้ากับแต่ละ appointment
+      const enriched = appts.map((a) => {
+        // ปกติคุณอาจเก็บ doctorId หรือ doctorUid ใน appointment doc
+        const doctorId = a.doctorId || a.doctorUid || a.doctor || null;
+        const doctorNameFromMap = doctorId ? doctorMap[doctorId] : null;
+        return {
+          ...a,
+          doctorName: doctorNameFromMap || a.doctorName || "-", // ถ้าไม่มี doctorId ให้ fallback
+        };
+      });
+
+      setAppointments(enriched);
+    } catch (err) {
+      console.error("fetchAppointments error:", err);
+      setAppointments([]);
+    }
   };
 
   const fetchRefunds = async () => {
@@ -241,7 +312,7 @@ export default function AdminDashboard() {
     fetchUsers();
     fetchServices();
     fetchPromotions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetchNews();
   }, [navigate]);
 
   const fetchStats = async () => {
@@ -620,6 +691,112 @@ export default function AdminDashboard() {
     });
   };
 
+  // Add news
+  const handleAddNews = async () => {
+    if (!newsForm.title || !newsForm.short) {
+      Swal.fire("แจ้งเตือน", "กรุณากรอกชื่อข่าวและข้อความสั้นๆ", "warning");
+      return;
+    }
+    try {
+      await addDoc(collection(db, "news"), {
+        title: newsForm.title,
+        tag: newsForm.tag || "ข่าวประชาสัมพันธ์",
+        short: newsForm.short,
+        detail: newsForm.detail || "",
+        image: newsForm.image || placeholderNewsImg,
+        link: newsForm.link || "",
+        createdAt: new Date().toISOString(),
+      });
+      Swal.fire("สำเร็จ", "สร้างข่าวเรียบร้อย", "success");
+      setNewsForm({
+        title: "",
+        tag: "",
+        short: "",
+        detail: "",
+        image: "",
+        link: "",
+      });
+      setShowNewsModal(false);
+      fetchNews();
+      fetchStats();
+    } catch (err) {
+      Swal.fire("เกิดข้อผิดพลาด", String(err), "error");
+    }
+  };
+
+  // Open edit modal for news
+  const handleEditNews = (n) => {
+    setIsEditingNews(true);
+    setEditNewsId(n.id);
+    setNewsForm({
+      title: n.title || "",
+      tag: n.tag || "",
+      short: n.short || "",
+      detail: n.detail || "",
+      image: n.image || "",
+      link: n.link || "",
+    });
+    setShowNewsModal(true);
+  };
+
+  // Update news
+  const handleUpdateNews = async () => {
+    if (!newsForm.title || !newsForm.short) {
+      Swal.fire("แจ้งเตือน", "กรุณากรอกชื่อข่าวและข้อความสั้นๆ", "warning");
+      return;
+    }
+    try {
+      await updateDoc(doc(db, "news", editNewsId), {
+        title: newsForm.title,
+        tag: newsForm.tag || "ข่าวประชาสัมพันธ์",
+        short: newsForm.short,
+        detail: newsForm.detail || "",
+        image: newsForm.image || placeholderNewsImg,
+        link: newsForm.link || "",
+        updatedAt: new Date().toISOString(),
+      });
+      Swal.fire("สำเร็จ", "อัปเดตข่าวเรียบร้อย", "success");
+      setIsEditingNews(false);
+      setEditNewsId(null);
+      setNewsForm({
+        title: "",
+        tag: "",
+        short: "",
+        detail: "",
+        image: "",
+        link: "",
+      });
+      setShowNewsModal(false);
+      fetchNews();
+    } catch (err) {
+      Swal.fire("เกิดข้อผิดพลาด", String(err), "error");
+    }
+  };
+
+  // Delete news
+  const handleDeleteNews = async (id) => {
+    const res = await Swal.fire({
+      title: "ต้องการลบข่าวนี้?",
+      text: "การกระทำนี้ไม่สามารถย้อนกลับได้",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "ลบ",
+      cancelButtonText: "ยกเลิก",
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#0288d1",
+    });
+    if (res.isConfirmed) {
+      try {
+        await deleteDoc(doc(db, "news", id));
+        Swal.fire("ลบแล้ว", "ข่าวถูกลบเรียบร้อย", "success");
+        fetchNews();
+        fetchStats();
+      } catch (err) {
+        Swal.fire("เกิดข้อผิดพลาด", String(err), "error");
+      }
+    }
+  };
+
   /* ---------------- Filter + pagination (users) ---------------- */
   const filteredUsers = useMemo(() => {
     let list = users;
@@ -672,6 +849,86 @@ export default function AdminDashboard() {
     const dec = value - flo;
     return dec >= 0.5 ? Math.ceil(value) : Math.floor(value);
   };
+
+  function getRemainingPayment(appt) {
+    // appt.price อาจเป็น undefined, string หรือ number
+    const price =
+      typeof appt?.price === "number" ? appt.price : Number(appt?.price) || 0;
+    const deposit =
+      typeof appt?.deposit === "number"
+        ? appt.deposit
+        : Number(appt?.deposit) || 0;
+    const remaining = price - deposit;
+    return remaining > 0 ? remaining : 0;
+  }
+
+  // คำนวณเวลาจนถึงนัด: คืน { days, hours, minutes } หรือ 0 ถ้าเลยเวลา
+  function timeUntil(dateStr, timeStr) {
+    if (!dateStr || !timeStr) return null;
+    const [y, m, d] = dateStr.split("-").map(Number);
+    const [hh, mm] = timeStr.split(":").map(Number);
+    const appt = new Date(y, m - 1, d, hh, mm, 0);
+    const now = new Date();
+    const diffMs = appt.getTime() - now.getTime();
+    if (diffMs <= 0) return 0;
+    const diffMin = Math.floor(diffMs / 60000);
+    const days = Math.floor(diffMin / (60 * 24));
+    const hours = Math.floor((diffMin % (60 * 24)) / 60);
+    const minutes = diffMin % 60;
+    return { days, hours, minutes };
+  }
+
+  // คืน string สถานะเวลา (เหมือนใน Appointments.jsx)
+  function renderTimeStatus(appt) {
+    if (!appt || !appt.date || !appt.time) return "-";
+    // ถ้ามีสถานะเฉพาะ เช่น refund_pending ให้แสดงข้อความนั้นก่อน
+    if (appt.status === "refund_pending")
+      return "กำลังขอยกเลิกการจองเพื่อขอคืนเงินมัดจำ";
+
+    const tu = timeUntil(appt.date, appt.time);
+    if (tu === null) return "-";
+    // ถ้าเลยเวลา
+    if (tu === 0) {
+      try {
+        const [y, m, d] = appt.date.split("-").map(Number);
+        const [hh, mm] = (appt.time || "00:00").split(":").map(Number);
+        const apptDate = new Date(y, m - 1, d, hh, mm);
+        const now = new Date();
+        const diff = now.getTime() - apptDate.getTime();
+        // ถ้าเลยมากกว่า 1 ชั่วโมง ถือว่า "หมดเวลาแล้ว"
+        if (diff > 60 * 60 * 1000) return "หมดเวลาแล้ว";
+        return "ถึงเวลานัดแล้ว";
+      } catch (e) {
+        return "ถึงเวลานัดแล้ว";
+      }
+    }
+
+    const parts = [];
+    if (tu.days > 0) parts.push(`${tu.days} วัน`);
+    if (tu.hours > 0) parts.push(`${tu.hours} ชั่วโมง`);
+    if (tu.minutes >= 0) parts.push(`${tu.minutes} นาที`);
+    return `อีก ${parts.join(" ")}`;
+  }
+
+  // คืน boolean ว่า appointment นี้ถือว่า "หมดเวลาแล้ว" (ใช้เพื่อปิดปุ่มแก้ไข)
+  function isAppointmentExpired(appt) {
+    if (!appt) return false;
+    const tu = timeUntil(appt.date, appt.time);
+    if (tu === null) return false;
+    if (tu === 0) {
+      try {
+        const [y, m, d] = appt.date.split("-").map(Number);
+        const [hh, mm] = (appt.time || "00:00").split(":").map(Number);
+        const apptDate = new Date(y, m - 1, d, hh, mm);
+        const now = new Date();
+        const diff = now.getTime() - apptDate.getTime();
+        return diff >= 60 * 60 * 1000; // ถ้าเลยเวลา 1 ชั่วโมง => expired
+      } catch (e) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   /* ---------------- Render helpers ---------------- */
   const renderUserRow = (u) => (
@@ -967,6 +1224,94 @@ export default function AdminDashboard() {
     );
   };
 
+  const renderManageNews = () => {
+    return (
+      <div className="max-w-6xl mx-auto space-y-6">
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="text-2xl font-bold text-[#0288d1]">จัดการข่าว</h2>
+          <button
+            onClick={() => {
+              setIsEditingNews(false);
+              setEditNewsId(null);
+              setNewsForm({
+                title: "",
+                tag: "",
+                short: "",
+                detail: "",
+                image: "",
+                link: "",
+              });
+              setShowNewsModal(true);
+            }}
+            className="flex items-center gap-2 bg-[#0288d1] text-white px-4 py-2 rounded-full font-medium shadow hover:bg-[#0277bd] cursor-pointer"
+          >
+            <FaPlusCircle /> เพิ่มข่าวใหม่
+          </button>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-md border border-gray-100">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-[#0288d1]/10 text-[#006680]">
+              <tr>
+                <th className="p-3 text-center w-12">#</th>
+                <th className="p-3">รูป</th>
+                <th className="p-3">หัวข้อ</th>
+                <th className="p-3">แท็ก</th>
+                <th className="p-3">ข้อความสั้น</th>
+                <th className="p-3">วันที่</th>
+                <th className="p-3 text-center">การจัดการ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {news.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="text-center py-6 text-gray-500">
+                    ยังไม่มีข่าว
+                  </td>
+                </tr>
+              ) : (
+                news.map((n, idx) => (
+                  <tr key={n.id} className="border-b hover:bg-gray-50">
+                    <td className="text-center p-3">{idx + 1}</td>
+                    <td className="p-3">
+                      <img
+                        src={n.image || placeholderNewsImg}
+                        alt={n.title}
+                        className="w-20 h-12 object-cover rounded"
+                      />
+                    </td>
+                    <td className="p-3">{n.title}</td>
+                    <td className="p-3">{n.tag}</td>
+                    <td className="p-3">{n.short}</td>
+                    <td className="p-3">
+                      {n.createdAt
+                        ? new Date(n.createdAt).toLocaleString("th-TH")
+                        : "-"}
+                    </td>
+                    <td className="p-3 text-center space-x-2">
+                      <button
+                        onClick={() => handleEditNews(n)}
+                        className="bg-yellow-500 text-white px-3 py-1 rounded-lg text-xs hover:bg-yellow-600"
+                      >
+                        <FaEdit className="inline mr-1" /> แก้ไข
+                      </button>
+                      <button
+                        onClick={() => handleDeleteNews(n.id)}
+                        className="bg-red-500 text-white px-3 py-1 rounded-lg text-xs hover:bg-red-600"
+                      >
+                        <FaTrash className="inline mr-1" /> ลบ
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
   const renderOverview = () => (
     <>
       <h2 className="text-2xl font-bold text-[#0288d1] mb-6 text-center">
@@ -1099,7 +1444,7 @@ export default function AdminDashboard() {
       return sel < new Date(today.toDateString());
     };
 
-    const isBookedExpired = (entry) => {
+    const isBookedExpiredLocal = (entry) => {
       if (!entry) return false;
       try {
         const now = new Date();
@@ -1113,7 +1458,8 @@ export default function AdminDashboard() {
       }
     };
 
-    const handleDeleteAppointment = async (id) => {
+    // delete appointment - reuses the existing helper in file if present
+    const handleDeleteAppointmentLocal = async (id) => {
       const res = await Swal.fire({
         title: "ยืนยันการลบ?",
         text: "ต้องการลบการจองนี้หรือไม่",
@@ -1153,51 +1499,110 @@ export default function AdminDashboard() {
                   <th className="p-3 text-center w-12">#</th>
                   <th className="p-3">บริการ</th>
                   <th className="p-3">ผู้จอง</th>
+                  <th className="p-3">แพทย์ที่จอง</th>
                   <th className="p-3">อีเมล</th>
                   <th className="p-3">วัน / เวลา</th>
+                  <th className="p-3">สถานะ</th>
+                  <th className="p-3 text-center">ยอดที่ต้องชำระเพิ่ม</th>
                   <th className="p-3 text-center">การจัดการ</th>
                 </tr>
               </thead>
               <tbody>
                 {appointments.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="text-center py-4 text-gray-500">
+                    <td colSpan="7" className="text-center py-4 text-gray-500">
                       ยังไม่มีการจองในระบบ
                     </td>
                   </tr>
                 ) : (
-                  appointments.map((a, i) => (
-                    <tr key={a.id} className="border-b hover:bg-gray-50">
-                      <td className="text-center p-3">{i + 1}</td>
-                      <td className="p-3">{a.serviceName}</td>
-                      <td className="p-3">{a.userName}</td>
-                      <td className="p-3">{a.email}</td>
-                      <td className="p-3">
-                        {a.date} / {a.time}
-                      </td>
-                      <td className="p-3 text-center space-x-2">
-                        <button
-                          onClick={() => openEditModal(a)}
-                          className="bg-yellow-500 text-white px-3 py-1 rounded-lg text-xs hover:bg-yellow-600"
-                        >
-                          <FaEdit className="inline mr-1" /> แก้ไข
-                        </button>
-                        <button
-                          onClick={() => handleDeleteAppointment(a.id)}
-                          className="bg-red-500 text-white px-3 py-1 rounded-lg text-xs hover:bg-red-600"
-                        >
-                          <FaTrash className="inline mr-1" /> ลบ
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                  appointments.map((a, i) => {
+                    // status text and expired boolean use shared helpers:
+                    const statusText = renderTimeStatus(a);
+                    const expired = isAppointmentExpired(a);
+
+                    return (
+                      <tr key={a.id} className="border-b hover:bg-gray-50">
+                        <td className="text-center p-3">{i + 1}</td>
+                        <td className="p-3">{a.serviceName}</td>
+                        <td className="p-3">{a.userName}</td>
+                        <td className="p-3">{a.doctorName || "-"}</td>
+                        <td className="p-3">{a.email}</td>
+                        <td className="p-3">
+                          {a.date} / {a.time}
+                        </td>
+                        <td className="p-3">
+                          {statusText === "หมดเวลาแล้ว" ? (
+                            <span className="inline-block bg-gray-300 text-gray-700 text-xs px-3 py-1 rounded-full font-semibold">
+                              หมดเวลาแล้ว
+                            </span>
+                          ) : statusText === "ถึงเวลานัดแล้ว" ? (
+                            <span className="inline-block bg-[#fff3cd] text-[#856404] text-xs px-3 py-1 rounded-full font-semibold">
+                              ถึงเวลานัดแล้ว
+                            </span>
+                          ) : (
+                            <span className="inline-block bg-[#e0f7fa] text-[#006680] text-xs px-3 py-1 rounded-full font-semibold">
+                              {statusText}
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 text-center">
+                          {(() => {
+                            const remaining = getRemainingPayment(a); // ใช้ logic เดียวกับ Appointments.jsx
+                            if (remaining > 0) {
+                              return (
+                                <span className="inline-block bg-orange-50 text-orange-700 text-xs px-3 py-1 rounded-full font-semibold">
+                                  {new Intl.NumberFormat("th-TH").format(
+                                    remaining
+                                  )}{" "}
+                                  บาท
+                                </span>
+                              );
+                            }
+                            return (
+                              <span className="inline-block bg-green-100 text-green-700 text-xs px-3 py-1 rounded-full font-semibold">
+                                ไม่มียอดค้างชำระ
+                              </span>
+                            );
+                          })()}
+                        </td>
+                        <td className="p-3 text-center space-x-2">
+                          {expired ? (
+                            // if expired, only allow delete
+                            <button
+                              onClick={() => handleDeleteAppointmentLocal(a.id)}
+                              className="bg-red-500 text-white px-3 py-1 rounded-lg text-xs hover:bg-red-600"
+                            >
+                              <FaTrash className="inline mr-1" /> ลบ
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => openEditModal(a)}
+                                className="bg-yellow-500 text-white w-full py-1.5 rounded-lg text-xs hover:bg-yellow-600 cursor-pointer"
+                              >
+                                <FaEdit className="inline mr-1" /> แก้ไข
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handleDeleteAppointmentLocal(a.id)
+                                }
+                                className="bg-red-500 text-white w-full py-1.5 rounded-lg text-xs hover:bg-red-600 mt-2 cursor-pointer"
+                              >
+                                <FaTrash className="inline mr-1" /> ลบ
+                              </button>
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
         </div>
 
-        {/* ส่วนจัดการคำขอคืนเงินมัดจำ */}
+        {/* refund requests area */}
         <div className="mt-12">
           <h3 className="font-bold text-[#006680] text-2xl flex items-center gap-2 mb-3">
             <FaBoxOpen /> คำขอคืนเงินมัดจำ
@@ -1252,13 +1657,13 @@ export default function AdminDashboard() {
                               onClick={() => handleApproveRefund(r.id)}
                               className="bg-green-500 text-white px-3 py-1 rounded-lg text-xs hover:bg-green-600"
                             >
-                              ✅ อนุมัติ
+                              <FaCheck /> อนุมัติ
                             </button>
                             <button
                               onClick={() => handleRejectRefund(r.id)}
                               className="bg-red-500 text-white px-3 py-1 rounded-lg text-xs hover:bg-red-600"
                             >
-                              ❌ ไม่อนุมัติ
+                              <FaWindowClose /> ไม่อนุมัติ
                             </button>
                           </>
                         ) : (
@@ -1277,7 +1682,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Modal แก้ไขวันและเวลา */}
+        {/* Edit appointment modal */}
         {showEditModal && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
             <div className="bg-white rounded-3xl shadow-2xl w-[820px] h-[520px] flex border border-[#006680]/20 overflow-hidden animate-fadeIn">
@@ -1308,7 +1713,8 @@ export default function AdminDashboard() {
                           (b) => b.time === t && b.date === dateStr
                         );
                         const pending = pendingTimes.find((p) => p.time === t);
-                        const isBooked = booked && !isBookedExpired(booked);
+                        const isBooked =
+                          booked && !isBookedExpiredLocal(booked);
                         const isPending = pending && !booked;
                         const past = isPastTime(t);
                         const disabled = isBooked || isPending || past;
@@ -1357,6 +1763,7 @@ export default function AdminDashboard() {
                   >
                     ยกเลิก
                   </button>
+
                   <button
                     onClick={handleSaveEdit}
                     className={`cursor-pointer bg-[#006680] hover:bg-[#0289a7] text-white px-8 py-2 rounded-full font-semibold transition ${
@@ -1525,6 +1932,8 @@ export default function AdminDashboard() {
         return renderManagePromotions();
       case "appointments":
         return renderManageAppointments();
+      case "news":
+        return renderManageNews();
 
       default:
         return (
@@ -1569,6 +1978,7 @@ export default function AdminDashboard() {
             { key: "admins", label: "จัดการแอดมิน", icon: <FaUserShield /> },
             { key: "doctors", label: "จัดการหมอ", icon: <FaUserMd /> },
             { key: "users", label: "จัดการคนไข้", icon: <FaUsers /> },
+            { key: "news", label: "จัดการข่าว", icon: <FaHotjar /> },
             { key: "services", label: "จัดการบริการ", icon: <FaWrench /> },
             {
               key: "promotions",
@@ -1799,6 +2209,436 @@ export default function AdminDashboard() {
           </div>
         )}
       </div>
+
+      {/* News modal */}
+      {showNewsModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fadeIn">
+          <div className="bg-white rounded-3xl p-6 w-[750px] shadow-2xl border border-[#0288d1]/30 max-h-[90vh] overflow-y-auto">
+            <h3 className="flex items-center justify-center gap-2 text-2xl font-extrabold text-[#0288d1] mb-4">
+              {isEditingNews ? (
+                <>
+                  <FaEdit /> แก้ไขข่าว
+                </>
+              ) : (
+                <>
+                  <FaPlusCircle /> เพิ่มข่าวใหม่
+                </>
+              )}
+            </h3>
+
+            <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+              <div>
+                <label className="text-sm font-semibold text-gray-700">
+                  หัวข้อข่าว:
+                </label>
+                <input
+                  type="text"
+                  value={newsForm.title}
+                  onChange={(e) =>
+                    setNewsForm({ ...newsForm, title: e.target.value })
+                  }
+                  className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-semibold text-gray-700">
+                  แท็ก:
+                </label>
+                <input
+                  type="text"
+                  value={newsForm.tag}
+                  onChange={(e) =>
+                    setNewsForm({ ...newsForm, tag: e.target.value })
+                  }
+                  placeholder="เช่น ข่าวประชาสัมพันธ์, โปรโมชั่น"
+                  className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+                />
+              </div>
+
+              <div className="col-span-2">
+                <label className="text-sm font-semibold text-gray-700">
+                  ข้อความสั้น:
+                </label>
+                <input
+                  type="text"
+                  value={newsForm.short}
+                  onChange={(e) =>
+                    setNewsForm({ ...newsForm, short: e.target.value })
+                  }
+                  className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+                />
+              </div>
+
+              <div className="col-span-2">
+                <label className="text-sm font-semibold text-gray-700">
+                  รายละเอียดเต็ม:
+                </label>
+                <textarea
+                  value={newsForm.detail}
+                  onChange={(e) =>
+                    setNewsForm({ ...newsForm, detail: e.target.value })
+                  }
+                  className="border border-gray-300 w-full p-2 rounded-lg h-[160px] focus:ring-2 focus:ring-[#0288d1] outline-none resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-semibold text-gray-700">
+                  URL รูปภาพ:
+                </label>
+                <input
+                  type="text"
+                  value={newsForm.image}
+                  onChange={(e) =>
+                    setNewsForm({ ...newsForm, image: e.target.value })
+                  }
+                  placeholder="https://example.com/image.jpg"
+                  className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-semibold text-gray-700">
+                  ลิงก์ภายนอก (ถ้ามี):
+                </label>
+                <input
+                  type="text"
+                  value={newsForm.link}
+                  onChange={(e) =>
+                    setNewsForm({ ...newsForm, link: e.target.value })
+                  }
+                  placeholder="https://..."
+                  className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+                />
+              </div>
+
+              {newsForm.image && (
+                <div className="col-span-2 mt-2 flex justify-center">
+                  <img
+                    src={newsForm.image || placeholderNewsImg}
+                    alt="preview"
+                    className="max-h-[240px] object-contain rounded-lg border"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowNewsModal(false);
+                  setIsEditingNews(false);
+                  setEditNewsId(null);
+                  setNewsForm({
+                    title: "",
+                    tag: "",
+                    short: "",
+                    detail: "",
+                    image: "",
+                    link: "",
+                  });
+                }}
+                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400"
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={isEditingNews ? handleUpdateNews : handleAddNews}
+                className="bg-[#0288d1] text-white px-6 py-2 rounded-lg hover:bg-[#0277bd]"
+              >
+                {isEditingNews ? "บันทึกการแก้ไข" : "บันทึกข่าว"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* News modal */}
+      {showNewsModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fadeIn">
+          <div className="bg-white rounded-3xl p-6 w-[750px] shadow-2xl border border-[#0288d1]/30 max-h-[90vh] overflow-y-auto">
+            <h3 className="flex items-center justify-center gap-2 text-2xl font-extrabold text-[#0288d1] mb-4">
+              {isEditingNews ? (
+                <>
+                  <FaEdit /> แก้ไขข่าว
+                </>
+              ) : (
+                <>
+                  <FaPlusCircle /> เพิ่มข่าวใหม่
+                </>
+              )}
+            </h3>
+
+            <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+              <div>
+                <label className="text-sm font-semibold text-gray-700">
+                  หัวข้อข่าว:
+                </label>
+                <input
+                  type="text"
+                  value={newsForm.title}
+                  onChange={(e) =>
+                    setNewsForm({ ...newsForm, title: e.target.value })
+                  }
+                  className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-semibold text-gray-700">
+                  แท็ก:
+                </label>
+                <input
+                  type="text"
+                  value={newsForm.tag}
+                  onChange={(e) =>
+                    setNewsForm({ ...newsForm, tag: e.target.value })
+                  }
+                  placeholder="เช่น ข่าวประชาสัมพันธ์, โปรโมชั่น"
+                  className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+                />
+              </div>
+
+              <div className="col-span-2">
+                <label className="text-sm font-semibold text-gray-700">
+                  ข้อความสั้น:
+                </label>
+                <input
+                  type="text"
+                  value={newsForm.short}
+                  onChange={(e) =>
+                    setNewsForm({ ...newsForm, short: e.target.value })
+                  }
+                  className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+                />
+              </div>
+
+              <div className="col-span-2">
+                <label className="text-sm font-semibold text-gray-700">
+                  รายละเอียดเต็ม:
+                </label>
+                <textarea
+                  value={newsForm.detail}
+                  onChange={(e) =>
+                    setNewsForm({ ...newsForm, detail: e.target.value })
+                  }
+                  className="border border-gray-300 w-full p-2 rounded-lg h-[160px] focus:ring-2 focus:ring-[#0288d1] outline-none resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-semibold text-gray-700">
+                  URL รูปภาพ:
+                </label>
+                <input
+                  type="text"
+                  value={newsForm.image}
+                  onChange={(e) =>
+                    setNewsForm({ ...newsForm, image: e.target.value })
+                  }
+                  placeholder="https://example.com/image.jpg"
+                  className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-semibold text-gray-700">
+                  ลิงก์ภายนอก (ถ้ามี):
+                </label>
+                <input
+                  type="text"
+                  value={newsForm.link}
+                  onChange={(e) =>
+                    setNewsForm({ ...newsForm, link: e.target.value })
+                  }
+                  placeholder="https://..."
+                  className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+                />
+              </div>
+
+              {newsForm.image && (
+                <div className="col-span-2 mt-2 flex justify-center">
+                  <img
+                    src={newsForm.image || placeholderNewsImg}
+                    alt="preview"
+                    className="max-h-[240px] object-contain rounded-lg border"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowNewsModal(false);
+                  setIsEditingNews(false);
+                  setEditNewsId(null);
+                  setNewsForm({
+                    title: "",
+                    tag: "",
+                    short: "",
+                    detail: "",
+                    image: "",
+                    link: "",
+                  });
+                }}
+                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400"
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={isEditingNews ? handleUpdateNews : handleAddNews}
+                className="bg-[#0288d1] text-white px-6 py-2 rounded-lg hover:bg-[#0277bd]"
+              >
+                {isEditingNews ? "บันทึกการแก้ไข" : "บันทึกข่าว"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* News modal */}
+      {showNewsModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fadeIn">
+          <div className="bg-white rounded-3xl p-6 w-[750px] shadow-2xl border border-[#0288d1]/30 max-h-[90vh] overflow-y-auto">
+            <h3 className="flex items-center justify-center gap-2 text-2xl font-extrabold text-[#0288d1] mb-4">
+              {isEditingNews ? (
+                <>
+                  <FaEdit /> แก้ไขข่าว
+                </>
+              ) : (
+                <>
+                  <FaPlusCircle /> เพิ่มข่าวใหม่
+                </>
+              )}
+            </h3>
+
+            <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+              <div>
+                <label className="text-sm font-semibold text-gray-700">
+                  หัวข้อข่าว:
+                </label>
+                <input
+                  type="text"
+                  value={newsForm.title}
+                  onChange={(e) =>
+                    setNewsForm({ ...newsForm, title: e.target.value })
+                  }
+                  className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-semibold text-gray-700">
+                  แท็ก:
+                </label>
+                <input
+                  type="text"
+                  value={newsForm.tag}
+                  onChange={(e) =>
+                    setNewsForm({ ...newsForm, tag: e.target.value })
+                  }
+                  placeholder="เช่น ข่าวประชาสัมพันธ์, โปรโมชั่น"
+                  className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+                />
+              </div>
+
+              <div className="col-span-2">
+                <label className="text-sm font-semibold text-gray-700">
+                  ข้อความสั้น:
+                </label>
+                <input
+                  type="text"
+                  value={newsForm.short}
+                  onChange={(e) =>
+                    setNewsForm({ ...newsForm, short: e.target.value })
+                  }
+                  className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+                />
+              </div>
+
+              <div className="col-span-2">
+                <label className="text-sm font-semibold text-gray-700">
+                  รายละเอียดเต็ม:
+                </label>
+                <textarea
+                  value={newsForm.detail}
+                  onChange={(e) =>
+                    setNewsForm({ ...newsForm, detail: e.target.value })
+                  }
+                  className="border border-gray-300 w-full p-2 rounded-lg h-[160px] focus:ring-2 focus:ring-[#0288d1] outline-none resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-semibold text-gray-700">
+                  URL รูปภาพ:
+                </label>
+                <input
+                  type="text"
+                  value={newsForm.image}
+                  onChange={(e) =>
+                    setNewsForm({ ...newsForm, image: e.target.value })
+                  }
+                  placeholder="https://example.com/image.jpg"
+                  className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-semibold text-gray-700">
+                  ลิงก์ภายนอก (ถ้ามี):
+                </label>
+                <input
+                  type="text"
+                  value={newsForm.link}
+                  onChange={(e) =>
+                    setNewsForm({ ...newsForm, link: e.target.value })
+                  }
+                  placeholder="https://..."
+                  className="border border-gray-300 w-full p-2 rounded-lg focus:ring-2 focus:ring-[#0288d1] outline-none"
+                />
+              </div>
+
+              {newsForm.image && (
+                <div className="col-span-2 mt-2 flex justify-center">
+                  <img
+                    src={newsForm.image || placeholderNewsImg}
+                    alt="preview"
+                    className="max-h-[240px] object-contain rounded-lg border"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowNewsModal(false);
+                  setIsEditingNews(false);
+                  setEditNewsId(null);
+                  setNewsForm({
+                    title: "",
+                    tag: "",
+                    short: "",
+                    detail: "",
+                    image: "",
+                    link: "",
+                  });
+                }}
+                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400"
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={isEditingNews ? handleUpdateNews : handleAddNews}
+                className="bg-[#0288d1] text-white px-6 py-2 rounded-lg hover:bg-[#0277bd]"
+              >
+                {isEditingNews ? "บันทึกการแก้ไข" : "บันทึกข่าว"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </MainLayout>
   );
 }

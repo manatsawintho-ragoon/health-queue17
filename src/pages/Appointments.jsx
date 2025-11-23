@@ -1,3 +1,4 @@
+// src/pages/Appointments.jsx
 import React, { useEffect, useState, useRef } from "react";
 import MainLayout from "../layouts/MainLayout";
 import { db } from "../firebaseConfig";
@@ -10,7 +11,7 @@ import {
   doc,
   addDoc,
   onSnapshot,
-  orderBy,
+  deleteDoc,
 } from "firebase/firestore";
 import Swal from "sweetalert2";
 import DatePicker, { registerLocale } from "react-datepicker";
@@ -18,6 +19,10 @@ import th from "date-fns/locale/th";
 import "react-datepicker/dist/react-datepicker.css";
 import { FaClock, FaUndoAlt, FaInfoCircle } from "react-icons/fa";
 import emailjs from "emailjs-com";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
+
+import placeholderImage from "../assets/WHOCARE-logo.png";
 
 registerLocale("th", th);
 
@@ -38,22 +43,17 @@ export default function Appointments() {
   const weekMaxDate = new Date();
   weekMaxDate.setDate(today.getDate() + 6);
 
-  // เพิ่ม state ด้านบน
   const [refunds, setRefunds] = useState([]);
 
-  // realtime listener สำหรับคำขอคืนของผู้ใช้ (จะอัปเดตทันทีเมื่อ admin เปลี่ยนสถานะ)
   useEffect(() => {
     if (!user?.email) {
       setRefunds([]);
       return;
     }
-
     const q = query(
       collection(db, "refundRequests"),
       where("email", "==", user.email)
-      // ถ้าต้องการเรียง: , orderBy("createdAt","desc") (ต้องสร้าง index ถ้าจำเป็น)
     );
-
     const unsub = onSnapshot(
       q,
       (snap) => {
@@ -64,11 +64,9 @@ export default function Appointments() {
         console.error("onSnapshot refunds error:", err);
       }
     );
-
     return () => unsub();
   }, [user?.email]);
 
-  // แปลงวันที่ไทย
   const formatThaiDate = (isoDate) => {
     if (!isoDate) return "-";
     let date;
@@ -99,14 +97,12 @@ export default function Appointments() {
     return `${day} ${month} ${year}`;
   };
 
-  // แปลง YYYY-MM-DD -> Date
   const parseDateFromString = (s) => {
     if (!s) return null;
     const [y, m, d] = s.split("-").map(Number);
     return new Date(y, m - 1, d);
   };
 
-  // สร้างช่วงเวลา
   const generateTimeSlots = (day) => {
     let slots = [];
     let startHour, endHour;
@@ -124,21 +120,17 @@ export default function Appointments() {
     return slots;
   };
 
-  // โหลด appointments แบบ realtime (onSnapshot) — จะแสดงการเปลี่ยนแปลงเมื่อ Admin แก้/ลบ
   useEffect(() => {
     if (!user?.email) {
       setAppointments([]);
       setLoading(false);
       return;
     }
-
     setLoading(true);
     const q = query(
       collection(db, "appointments"),
       where("email", "==", user.email)
-      // ถ้าต้องการเรียง สามารถเพิ่ม orderBy("date","asc") แต่ต้องมี index ใน Firestore
     );
-
     const unsub = onSnapshot(
       q,
       (snap) => {
@@ -161,11 +153,9 @@ export default function Appointments() {
         );
       }
     );
-
     return () => unsub();
   }, [user?.email]);
 
-  // ฟังก์ชันคำนวณเวลาคงเหลือ
   const timeUntil = (dateStr, timeStr) => {
     if (!dateStr || !timeStr) return null;
     const [y, m, d] = dateStr.split("-").map(Number);
@@ -181,7 +171,6 @@ export default function Appointments() {
     return { days, hours, minutes };
   };
 
-  // แสดงสถานะเวลา
   const renderTimeStatus = (a) => {
     const tu = timeUntil(a.date, a.time);
     if (tu === null) return "-";
@@ -203,7 +192,6 @@ export default function Appointments() {
     return `อีก ${parts.join(" ")}`;
   };
 
-  // โหลด slot วันใหม่
   useEffect(() => {
     const loadSlotsForDate = async () => {
       if (!selectedDate) return;
@@ -269,7 +257,6 @@ export default function Appointments() {
     return false;
   };
 
-  // เปิด modal แก้ไข
   const openEditModal = (appt) => {
     if (appt?.editedOnce) return;
     setEditingAppt(appt);
@@ -279,13 +266,12 @@ export default function Appointments() {
     setShowModal(true);
   };
 
-  // ฟังก์ชันส่งอีเมลยืนยันการแก้ไขนัดหมายผ่าน EmailJS
   const sendEditConfirmationEmail = async (apptData) => {
     try {
       const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
       const templateId =
         import.meta.env.VITE_EMAILJS_TEMPLATE_ID_EDIT ||
-        import.meta.env.VITE_EMAILJS_TEMPLATE_ID; // fallback ถ้าไม่ได้ตั้ง template สำหรับแก้ไข
+        import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
       const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
 
       if (!serviceId || !templateId || !publicKey) {
@@ -330,13 +316,10 @@ export default function Appointments() {
       }
 
       const apptRef = doc(db, "appointments", editingAppt.id);
-      const updatePayload = {
-        date: dateStr,
-        time: selectedTime,
-      };
+      const updatePayload = { date: dateStr, time: selectedTime };
       if (!editingAppt.editedOnce) updatePayload.editedOnce = true;
       await updateDoc(apptRef, updatePayload);
-      // ส่งอีเมลยืนยันการแก้ไขวันและเวลา
+
       await sendEditConfirmationEmail({
         userName: editingAppt.userName,
         serviceName: editingAppt.serviceName,
@@ -370,33 +353,64 @@ export default function Appointments() {
     }
   }
 
-  // แทนที่ฟังก์ชัน handleRefundRequest เดิมด้วยอันนี้
+  async function handleDeleteAppointment(appointmentId) {
+    if (!appointmentId) return;
+    const confirm = await Swal.fire({
+      title: "ยืนยันการลบการจอง",
+      text: "การลบนี้จะไม่สามารถกู้คืนได้ คุณแน่ใจหรือไม่ว่าจะลบการจองนี้?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "ลบเลย",
+      cancelButtonText: "ยกเลิก",
+      confirmButtonColor: "#d33",
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    try {
+      await deleteDoc(doc(db, "appointments", appointmentId));
+
+      try {
+        const q = query(
+          collection(db, "refundRequests"),
+          where("appointmentId", "==", appointmentId)
+        );
+        const snap = await getDocs(q);
+        const deletes = snap.docs.map((d) =>
+          deleteDoc(doc(db, "refundRequests", d.id))
+        );
+        if (deletes.length > 0) await Promise.all(deletes);
+      } catch (e) {
+        console.error("ลบ refundRequests ล้มเหลว:", e);
+      }
+
+      setAppointments((prev) => prev.filter((p) => p.id !== appointmentId));
+      Swal.fire("ลบเรียบร้อย", "การจองถูกลบแล้ว", "success");
+    } catch (err) {
+      console.error("handleDeleteAppointment error:", err);
+      Swal.fire("เกิดข้อผิดพลาด", "ไม่สามารถลบการจองได้", "error");
+    }
+  }
+
   const handleRefundRequest = async (appointment) => {
     const { value: reason } = await Swal.fire({
       title: "กรุณากรอกเหตุผลการขอยกเลิก",
       input: "textarea",
       inputPlaceholder: "อธิบายเหตุผลที่ต้องการขอยกเลิกการจอง...",
-      inputAttributes: {
-        "aria-label": "เหตุผลขอยกเลิก",
-      },
+      inputAttributes: { "aria-label": "เหตุผลขอยกเลิก" },
       showCancelButton: true,
       confirmButtonText: "ส่งคำขอ",
       cancelButtonText: "ยกเลิก",
       confirmButtonColor: "#d33",
     });
 
-    if (!reason) {
-      // ผู้ใช้ยกเลิกหรือไม่กรอกเหตุผล
-      return;
-    }
+    if (!reason) return;
 
     try {
-      // อัปเดตสถานะใน appointments
       await updateDoc(doc(db, "appointments", appointment.id), {
         status: "refund_pending",
       });
 
-      // สร้างเอกสารใน refundRequests (เก็บ appointmentId เพื่ออ้างอิงในฝั่ง admin)
       await addDoc(collection(db, "refundRequests"), {
         appointmentId: appointment.id,
         userName: appointment.userName || user?.fullName || "ไม่ระบุชื่อ",
@@ -406,12 +420,11 @@ export default function Appointments() {
         time: appointment.time,
         deposit: appointment.deposit || 0,
         userReason: reason,
-        adminNote: "", // ให้ admin ใส่เหตุผลเมื่ออนุมัติ/ปฏิเสธ
-        status: null, // null / "approved" / "rejected"
+        adminNote: "",
+        status: null,
         createdAt: new Date().toISOString(),
       });
 
-      // อัปเดต local state เพื่อรีเฟรชหน้าเร็ว ๆ
       setAppointments((prev) =>
         prev.map((p) =>
           p.id === appointment.id ? { ...p, status: "refund_pending" } : p
@@ -437,6 +450,232 @@ export default function Appointments() {
       ) || null
     );
   };
+  // Replace existing exportAppointmentPDF with this implementation
+  const exportAppointmentPDF = async (a) => {
+    // console.log("[pdf] start export for", a.id || "(no id)");
+
+    // paths: ใช้ placeholder import ก่อน ถ้าไม่สำเร็จ fallback ไปที่ไฟล์อัปโหลดใน history
+    const uploadedLogoPath = placeholderImage;
+
+    // helper: load image -> base64 (try uploaded path first, then module placeholderImage)
+    const loadImageAsBase64 = (url) =>
+      new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+          try {
+            const canvas = document.createElement("canvas");
+            canvas.width = img.naturalWidth || img.width || 200;
+            canvas.height = img.naturalHeight || img.height || 60;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0);
+            resolve(canvas.toDataURL("image/png"));
+          } catch (e) {
+            reject(e);
+          }
+        };
+        img.onerror = (e) => reject(e);
+        img.src = url;
+      });
+
+    let logoDataUrl = null;
+    // 1) try uploaded file path first (tool/environment will transform /mnt/data/... into URL)
+    try {
+      logoDataUrl = await loadImageAsBase64(uploadedLogoPath);
+      // console.log("[pdf] loaded uploadedLogoPath", uploadedLogoPath);
+    } catch (err) {
+      console.warn("[pdf] failed loading uploadedLogoPath:", err);
+      // 2) fallback to module asset placeholderImage (imported)
+      try {
+        if (typeof placeholderImage !== "undefined") {
+          logoDataUrl = await loadImageAsBase64(placeholderImage);
+          // console.log("[pdf] loaded placeholderImage (module asset)");
+        }
+      } catch (err2) {
+        // console.warn("[pdf] fallback placeholderImage failed:", err2);
+        logoDataUrl = null;
+      }
+    }
+
+    const logoHtml = logoDataUrl
+      ? `
+    <div style="
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        margin-bottom:20px;
+      ">
+      <img src="${logoDataUrl}"
+        style="height:90px; object-fit:contain;" />
+    </div>`
+      : `
+    <div style="
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        margin-bottom:20px;
+        font-size:24px;
+        color:#888;
+      ">
+      WHOCARE
+    </div>`;
+
+    const contentHtml = `
+    <div style="max-width:760px;margin:0 auto;font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Kanit','Noto Sans Thai',Arial; color:#063642;">
+      ${logoHtml}
+      <h1 style="text-align:center;color:#006680;margin:6px 0 12px 0;font-size:20px;">เอกสารการนัดหมาย - WHOCARE</h1>
+      <p style="text-align:center;color:#444;margin:4px 0 12px;font-size:13px;">ใช้แสดงรายละเอียดการนัดและเป็นหลักฐานการชำระมัดจำ</p>
+      <div style="margin-top:8px;font-size:14px;color:#333;">
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px dashed #e6f7f8;">
+          <div style="color:#666;">ชื่อผู้ใช้</div>
+          <div style="font-weight:700;text-align:right;">${escapeHtml(
+            a.userName || a.email || "-"
+          )}</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;">
+          <div style="color:#666;">บริการ</div>
+          <div style="font-weight:700;text-align:right;">${escapeHtml(
+            a.serviceName || "-"
+          )}</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;">
+          <div style="color:#666;">แพทย์</div>
+          <div style="font-weight:700;text-align:right;">${escapeHtml(
+            a.doctorName || "-"
+          )}</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;">
+          <div style="color:#666;">วันที่นัด</div>
+          <div style="font-weight:700;text-align:right;">${escapeHtml(
+            formatThaiDate(a.date)
+          )}</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;">
+          <div style="color:#666;">เวลา</div>
+          <div style="font-weight:700;text-align:right;">${escapeHtml(
+            a.time || "-"
+          )} น.</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #e6f7f8;">
+          <div style="color:#666;">มัดจำที่ชำระ</div>
+          <div style="font-weight:700;text-align:right;">${escapeHtml(
+            String(a.deposit ?? 0)
+          )} บาท</div>
+        </div>
+
+        <div style="padding:12px 10px;background:#f8feff;border-radius:8px;margin-top:12px;font-size:13px;color:#555;">
+          โปรดนำเอกสารนี้ (หรือรูปภาพ/สกรีนช็อต) มาแสดงต่อเจ้าหน้าที่เมื่อมาถึงคลินิก กรุณามาถึงก่อนเวลานัด 10–15 นาที
+        </div>
+
+        <div style="text-align:center;margin-top:14px;color:#777;font-size:12px;">
+          WHOCARE — ทีมแพทย์ผู้เชี่ยวชาญ<br/>
+          วันที่พิมพ์: ${new Date().toLocaleString("th-TH")}
+        </div>
+      </div>
+    </div>
+  `;
+
+    // สร้าง wrapper ที่มองเห็นได้ (opacity 1) แต่ย้ายตำแหน่งชั่วคราวกลางหน้าจอ
+    const wrapper = document.createElement("div");
+    wrapper.style.position = "absolute";
+    wrapper.style.left = "-9999px"; // ย้ายออกนอกจอ
+    wrapper.style.top = "-9999px"; // ย้ายออกนอกจอ
+    wrapper.style.opacity = "1"; // ให้ render ปกติ (ต้องไม่เป็น 0)
+    wrapper.style.pointerEvents = "none";
+    wrapper.style.zIndex = "-1"; // ไม่ให้ขวาง UI
+    wrapper.style.width = "800px";
+    wrapper.style.background = "#ffffff";
+    wrapper.style.padding = "20px";
+    wrapper.style.borderRadius = "10px";
+    wrapper.style.boxShadow = "0 8px 30px rgba(0,0,0,0.12)";
+    wrapper.style.fontFamily =
+      '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Kanit", "Noto Sans Thai", Arial';
+    wrapper.style.color = "#063642";
+    wrapper.innerHTML = contentHtml;
+
+    document.body.appendChild(wrapper);
+    // console.log("[pdf] wrapper appended (visible) — waiting for render");
+
+    // รอ fonts + render settle
+    try {
+      if (document.fonts && document.fonts.ready) {
+        await document.fonts.ready;
+        // console.log("[pdf] fonts ready");
+      }
+    } catch (e) {}
+    await new Promise((r) => setTimeout(r, 300));
+
+    // ใช้ html2canvas เพื่อจับภาพ wrapper
+    try {
+      const canvas = await html2canvas(wrapper, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        logging: true,
+      });
+      // console.log(
+      //   "[pdf] html2canvas rendered - canvas size:",
+      //   canvas.width,
+      //   canvas.height
+      // );
+
+      const imgData = canvas.toDataURL("image/png");
+
+      // สร้าง jsPDF และใส่ภาพ (fit to A4)
+      const pdf = new jsPDF({
+        unit: "mm",
+        format: "a4",
+        orientation: "portrait",
+      });
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      // convert px -> mm (assuming 96dpi)
+      const pxPerMm = 96 / 25.4;
+      const imgWidthMm = canvas.width / pxPerMm;
+      const imgHeightMm = canvas.height / pxPerMm;
+
+      // scale to fit width
+      const scale = Math.min(pageWidth / imgWidthMm, pageHeight / imgHeightMm);
+      const renderWidth = imgWidthMm * scale;
+      const renderHeight = imgHeightMm * scale;
+
+      pdf.addImage(
+        imgData,
+        "PNG",
+        (pageWidth - renderWidth) / 2,
+        10,
+        renderWidth,
+        renderHeight
+      );
+      const filename = `WHOCARE_appointment_${a.id || Date.now()}.pdf`;
+      pdf.save(filename);
+      // console.log("[pdf] jsPDF saved:", filename);
+    } catch (err) {
+      console.error("[pdf] html2canvas/jsPDF error:", err);
+      Swal.fire(
+        "เกิดข้อผิดพลาด",
+        "ไม่สามารถสร้าง PDF ได้ (ดู console)",
+        "error"
+      );
+    } finally {
+      // clean up
+      if (wrapper && wrapper.parentNode)
+        wrapper.parentNode.removeChild(wrapper);
+    }
+  };
+
+  // ฟังก์ชันช่วย escape (ต้องมี)
+  function escapeHtml(str) {
+    if (str === undefined || str === null) return "";
+    return String(str)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
 
   if (loading)
     return (
@@ -461,7 +700,6 @@ export default function Appointments() {
           การจองของฉัน
         </h1>
 
-        {/* ------------------- ป้ายกฎการใช้งาน ------------------- */}
         <div className="max-w-5xl mx-auto bg-[#e0f7fa] border-l-4 border-[#0289a7] rounded-2xl p-5 mb-8 shadow-sm">
           <div className="flex items-start">
             <FaInfoCircle className="text-[#0289a7] w-6 h-6 mt-1 mr-3 flex-shrink-0" />
@@ -515,7 +753,6 @@ export default function Appointments() {
           </div>
         </div>
 
-        {/* ------------------- กลุ่มยังไม่หมดเวลา ------------------- */}
         <section className="max-w-6xl mx-auto mb-10">
           <h2 className="text-xl font-semibold text-[#006680] mb-3">
             บริการที่ยังไม่หมดเวลา
@@ -532,14 +769,12 @@ export default function Appointments() {
                   ? a.price - (a.deposit || 0)
                   : 0;
                 const status = renderTimeStatus(a);
-                const edited = !!a.editedOnce;
-
                 return (
                   <div
                     key={a.id}
                     className="bg-white rounded-2xl shadow-md border border-gray-200 p-5 flex flex-col justify-between transition hover:shadow-lg"
                   >
-                    <div>
+                    <div className="flex flex-col items-center text-center">
                       {a.image && (
                         <img
                           src={a.image}
@@ -547,16 +782,14 @@ export default function Appointments() {
                           className="w-full h-40 object-cover rounded-xl mb-3 border border-gray-100"
                         />
                       )}
-
                       <h3 className="text-lg font-bold text-[#006680] mb-2">
                         {a.serviceName}
                       </h3>
                       {a.description && (
-                        <p className="text-sm text-gray-600 line-clamp-3 mb-2">
+                        <p className="text-sm text-gray-600 mb-2">
                           {a.description}
                         </p>
                       )}
-
                       <p className="text-sm text-gray-700">
                         <b>วันที่:</b> {formatThaiDate(a.date)}
                       </p>
@@ -564,23 +797,23 @@ export default function Appointments() {
                         <b>เวลา:</b> {a.time} น.
                       </p>
                       <p className="text-sm text-gray-700 mt-1">
+                        <b>แพทย์:</b> {a.doctorName || "-"}
+                      </p>
+                      <p className="text-sm text-gray-700 mt-1">
                         <b>เบอร์โทร:</b> {a.phone}
                       </p>
-
                       <p className="text-sm text-gray-700 mt-1">
                         <b>มัดจำแล้ว:</b>{" "}
                         <span className="font-semibold text-[#0289a7]">
-                          <s>{a.deposit ?? 0} บาท</s>
+                          {a.deposit ?? 0} บาท
                         </span>
                       </p>
-
                       <p className="text-sm text-gray-700 mt-1">
                         <b>ชำระที่คลินิกเพิ่มเติม:</b>{" "}
-                        <span className="font-bold text-[#d97706]">
+                        <span className="text-[#d97706] font-bold">
                           {remainingPayment > 0 ? remainingPayment : 0} บาท
                         </span>
                       </p>
-
                       <div className="mt-3">
                         <span
                           className={`inline-block px-3 py-1 text-xs rounded-full font-semibold ${
@@ -596,14 +829,23 @@ export default function Appointments() {
                       </div>
                     </div>
 
-                    <div className="flex justify-end mt-4 gap-3">
-                      {/* กรณีอยู่ระหว่างขอคืนเงิน */}
+                    <div className="flex flex-col items-stretch mt-4 gap-3">
+                      <button
+                        onClick={() => exportAppointmentPDF(a)}
+                        className="
+                          w-full text-center text-sm px-3 py-2 rounded-full font-semibold cursor-pointer
+                          border border-indigo-600 text-indigo-600 bg-white
+                          transition-all duration-200
+                          hover:bg-indigo-600 hover:text-white
+  "
+                      >
+                        ดาวน์โหลดเอกสารนัด (PDF)
+                      </button>
+
                       {(() => {
                         const refund = findRefundForAppointment(a);
-
                         if (refund) {
                           if (refund.status === "approved") {
-                            // ได้รับการคืนเงินแล้ว
                             return (
                               <div className="text-center mt-3">
                                 <span className="inline-block bg-green-100 text-green-700 px-3 py-1 text-xs rounded-full font-semibold">
@@ -616,11 +858,9 @@ export default function Appointments() {
                               </div>
                             );
                           }
-
                           if (refund.status === "rejected") {
-                            //  ถูกปฏิเสธการคืนเงิน
                             return (
-                              <div className="flex flex-col items-start mt-2">
+                              <div className="flex flex-col items-stretch mt-2">
                                 <span className="inline-block bg-red-100 text-red-700 px-3 py-1 text-xs rounded-full font-semibold">
                                   ถูกปฏิเสธการคืนเงิน
                                 </span>
@@ -629,11 +869,10 @@ export default function Appointments() {
                                     เหตุผล: {refund.adminNote}
                                   </p>
                                 )}
-
                                 {!a.editedOnce ? (
                                   <button
                                     onClick={() => openEditModal(a)}
-                                    className="mt-3 bg-[#006680] hover:bg-[#0289a7] text-white text-sm px-4 py-1 rounded-full transition font-semibold"
+                                    className="w-full mt-3 bg-[#006680] hover:bg-[#0289a7] text-white text-sm px-3 py-2 rounded-full transition font-semibold cursor-pointer"
                                   >
                                     แก้ไขวันและเวลา
                                   </button>
@@ -645,8 +884,6 @@ export default function Appointments() {
                               </div>
                             );
                           }
-
-                          // ⏳ รอการอนุมัติ (pending/null)
                           return (
                             <span className="text-sm text-gray-600 italic flex items-center">
                               <FaUndoAlt className="mr-2 text-[#d93025]" />
@@ -654,14 +891,12 @@ export default function Appointments() {
                             </span>
                           );
                         }
-
-                        // 🟦 กรณีไม่มีคำขอคืนเงิน
                         return (
                           <>
                             <button
                               onClick={() => openEditModal(a)}
                               disabled={a.editedOnce}
-                              className={`text-sm px-4 py-1 rounded-full transition font-semibold ${
+                              className={`w-full text-sm px-3 py-2 rounded-full transition font-semibold cursor-pointer ${
                                 a.editedOnce
                                   ? "bg-gray-300 text-gray-600 cursor-not-allowed"
                                   : "bg-[#006680] hover:bg-[#0289a7] text-white"
@@ -678,9 +913,9 @@ export default function Appointments() {
                             {!a.editedOnce && (
                               <button
                                 onClick={() => handleRefundRequest(a)}
-                                className="text-sm px-4 py-1 rounded-full transition font-semibold bg-red-500 hover:bg-red-600 text-white"
+                                className="w-full text-sm px-3 py-2 rounded-full transition font-semibold bg-red-500 hover:bg-red-600 text-white cursor-pointer"
                               >
-                                ขอยกเลิกการจอง
+                                ขอยกเลิกการจอง (refund)
                               </button>
                             )}
                           </>
@@ -694,7 +929,6 @@ export default function Appointments() {
           )}
         </section>
 
-        {/* ------------------- กลุ่มหมดเวลาแล้ว ------------------- */}
         <section className="max-w-6xl mx-auto">
           <h2 className="text-xl font-semibold text-red-600 mb-3">
             บริการที่หมดเวลาแล้ว
@@ -716,7 +950,7 @@ export default function Appointments() {
                     key={a.id}
                     className="bg-gray-100 rounded-2xl shadow border border-gray-300 p-5 flex flex-col justify-between"
                   >
-                    <div>
+                    <div className="flex flex-col items-center text-center">
                       {a.image && (
                         <img
                           src={a.image}
@@ -727,7 +961,6 @@ export default function Appointments() {
                       <h3 className="text-lg font-bold text-gray-700 mb-2">
                         {a.serviceName}
                       </h3>
-
                       <p className="text-sm text-gray-600">
                         <b>วันที่:</b> {formatThaiDate(a.date)}
                       </p>
@@ -735,21 +968,29 @@ export default function Appointments() {
                         <b>เวลา:</b> {a.time} น.
                       </p>
                       <p className="text-sm text-gray-600 mt-1">
+                        <b>แพทย์:</b> {a.doctorName || "-"}
+                      </p>
+                      <p className="text-sm text-gray-600 mt-1">
                         <b>มัดจำแล้ว:</b> <s>{a.deposit ?? 0} บาท</s>
                       </p>
                       <p className="text-sm text-gray-600">
                         <b>ชำระที่คลินิกเพิ่มเติม:</b> {remainingPayment} บาท
                       </p>
-
                       <span className="inline-block mt-3 bg-gray-300 text-gray-700 text-xs px-3 py-1 rounded-full font-semibold">
                         หมดเวลาแล้ว
                       </span>
                     </div>
 
-                    <div className="flex justify-end mt-4">
+                    <div className="flex flex-col items-stretch mt-4 gap-3">
+                      <button
+                        onClick={() => exportAppointmentPDF(a)}
+                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-3 py-2 rounded-full transition font-semibold"
+                      >
+                        ดาวน์โหลดเอกสารนัด (PDF)
+                      </button>
                       <button
                         onClick={() => handleDeleteAppointment(a.id)}
-                        className="bg-red-500 hover:bg-red-600 text-white text-sm px-4 py-1 rounded-full transition font-semibold"
+                        className="w-full bg-red-500 hover:bg-red-600 text-white text-sm px-3 py-2 rounded-full transition font-semibold"
                       >
                         ลบออก
                       </button>
@@ -761,7 +1002,7 @@ export default function Appointments() {
           )}
         </section>
       </div>
-      {/* ------------------- Modal ------------------- */}
+
       {showModal && editingAppt && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
           <div
@@ -891,8 +1132,6 @@ export default function Appointments() {
       )}
     </MainLayout>
   );
-
-  // ------------------- Helper Functions -------------------
 
   function isBookedExpired(bookedEntry) {
     if (!bookedEntry) return false;

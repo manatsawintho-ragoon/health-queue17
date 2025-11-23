@@ -1,165 +1,231 @@
-import React, { useState } from "react";
+// src/pages/Service.jsx
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
-
-// hero img 
 import heroImg from "../assets/spu-building.jpg";
+import placeholderImage from "../assets/WHOCARE-logo.png";
+import { db } from "../firebaseConfig";
+import { collection, getDocs } from "firebase/firestore";
+import { FaFire } from "react-icons/fa";
+import Swal from "sweetalert2";
+import AnimateSection from "../components/AnimatedSection";
 
-export default function Packages() {
-  const [activeTab, setActiveTab] = useState("ทั้งหมด");
+export default function Service() {
+  const [promotions, setPromotions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
-  const packages = [
-    {
-      title: "ตรวจสุขภาพทั่วไป",
-      category: "ตรวจสุขภาพ",
-      desc: "บริการตรวจสุขภาพประจำปี ตรวจร่างกายเบื้องต้น พร้อมคำแนะนำจากแพทย์ผู้เชี่ยวชาญ",
-      price: "เริ่มต้นที่ 1,200 ฿",
-      img: "https://images.unsplash.com/photo-1588776814546-ec7c6fefb0ec?auto=format&fit=crop&w=800&q=60",
-    },
-    {
-      title: "คลินิกโรคหัวใจ",
-      category: "โรคเฉพาะทาง",
-      desc: "ให้บริการตรวจวินิจฉัย ดูแลรักษา และติดตามผลผู้ป่วยโรคหัวใจ ด้วยเทคโนโลยีทันสมัย",
-      price: "เริ่มต้นที่ 2,500 ฿",
-      img: "https://images.unsplash.com/photo-1550831107-1553da8c8464?auto=format&fit=crop&w=800&q=60",
-    },
-    {
-      title: "ศูนย์ตรวจวินิจฉัยทางภาพ",
-      category: "โรคเฉพาะทาง",
-      desc: "บริการเอกซเรย์ อัลตราซาวด์ และ MRI โดยทีมรังสีแพทย์มืออาชีพ",
-      price: "เริ่มต้นที่ 3,000 ฿",
-      img: "https://images.unsplash.com/photo-1580281657521-8b79eaf0d66b?auto=format&fit=crop&w=800&q=60",
-    },
-    {
-      title: "แพ็กเกจวัคซีนผู้ใหญ่",
-      category: "วัคซีน",
-      desc: "รวมวัคซีนสำคัญสำหรับผู้ใหญ่ เช่น ไข้หวัดใหญ่ HPV และบาดทะยัก",
-      price: "เริ่มต้นที่ 1,800 ฿",
-      img: "https://images.unsplash.com/photo-1629904853893-c2c8981a1dc5?auto=format&fit=crop&w=800&q=60",
-    },
-  ];
+  useEffect(() => {
+    const fetchPromos = async () => {
+      try {
+        const snap = await getDocs(collection(db, "promotions"));
+        const list = snap.docs
+          .map((d) => ({
+            id: d.id,
+            name: d.data().name,
+            description: d.data().description,
+            image: d.data().image || placeholderImage,
+            price: Number(d.data().price) || 0,
+            discount: Number(d.data().discount) || 0,
+            recommend: d.data().recommend || false,
+          }))
+          .filter((p) => p.discount > 0) // แสดงเฉพาะลดราคา
+          .sort((a, b) => b.discount - a.discount); // เรียงจากลดมาก → น้อย
+        setPromotions(list);
+      } catch (err) {
+        console.error("Error loading promotions:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const categories = ["ทั้งหมด", "ตรวจสุขภาพ", "วัคซีน", "โรคเฉพาะทาง"];
-  const filteredPackages =
-    activeTab === "ทั้งหมด"
-      ? packages
-      : packages.filter((pkg) => pkg.category === activeTab);
+    fetchPromos();
+  }, []);
+
+  const roundByHalf = (value) => {
+    const n = Number(value) || 0;
+    const flo = Math.floor(n);
+    const dec = n - flo;
+    return dec >= 0.5 ? Math.ceil(n) : Math.floor(n);
+  };
+
+  const showPromo = (p) => {
+    const raw = p.price * (1 - p.discount / 100);
+    const rounded = roundByHalf(raw);
+
+    Swal.fire({
+      title: `<h2 class='text-[#006680] font-bold text-2xl'>${p.name}</h2>`,
+      html: `
+        <img src="${
+          p.image
+        }" style="width:100%;border-radius:12px;margin-bottom:12px;object-fit:cover;max-height:360px;" />
+        <p style="color:#444;text-align:left;font-size:15px;">${
+          p.description || ""
+        }</p>
+        <p style="color:#666;margin-top:8px;">
+          ส่วนลด: <strong style="color:#d33">${p.discount}%</strong>
+        </p>
+        <p style="color:#666;margin-top:8px;">
+          ราคาเดิม: <span style="text-decoration:line-through;color:#d33">${
+            p.price
+          }</span> บาท
+        </p>
+        <p style="
+          margin-top: 12px;
+          padding: 10px 16px;
+          background: linear-gradient(135deg, #e0f7fa, #b2ebf2);
+          color: #00556b;
+          font-weight: 900;
+          font-size: 22px;
+          border-radius: 14px;
+          text-align: center;
+          letter-spacing: -0.5px;
+          box-shadow: 0 4px 10px rgba(0,150,180,0.15);
+        ">
+          ราคาโปรโมชั่น: ${rounded} บาท
+        </p>
+      `,
+      showCancelButton: true,
+      confirmButtonText: "จองโปรโมชั่นนี้",
+      cancelButtonText: "ปิด",
+      confirmButtonColor: "#006680",
+      background: "#f9feff",
+      preConfirm: () => {
+        const user = JSON.parse(localStorage.getItem("user"));
+        if (!user) {
+          Swal.fire({
+            icon: "info",
+            title: "กรุณาเข้าสู่ระบบก่อนจองบริการ",
+            confirmButtonText: "เข้าสู่ระบบ",
+            confirmButtonColor: "#006680",
+          }).then(() => navigate("/login"));
+          return false;
+        }
+        navigate("/booking", { state: { promoId: p.id, promoMode: true } });
+      },
+    });
+  };
 
   return (
     <MainLayout>
+      {/* hero */}
       <section className="relative bg-[#e6f3f5]">
         <img
           src={heroImg}
-          alt="Page Hero"
+          alt="Service Hero"
           className="w-full h-[240px] object-cover opacity-70"
         />
         <div className="absolute inset-0 flex flex-col items-center justify-center text-white bg-[#004f5e]/80">
           <h1 className="text-4xl font-bold mb-3 tracking-wide drop-shadow-lg">
-            แพ็กเกจและโปรโมชั่น
+            โปรโมชั่นลดราคา
           </h1>
           <p className="text-lg text-gray-200 drop-shadow-md">
-            รวมโปรโมชั่นและแพ็กเกจสุขภาพสุดคุ้ม ดูแลคุณครบทุกมิติทั้งกายและใจ
+            รวมโปรโมชั่นและแพ็กเกจสุขภาพสุดคุ้ม
           </p>
         </div>
       </section>
 
-      <div className="flex justify-center gap-4 mt-10 flex-wrap px-4">
-        {categories.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-6 py-2 rounded-full border font-medium transition-all duration-300 transform cursor-pointer ${
-              activeTab === tab
-                ? "bg-[#0288a7] text-white border-[#0288a7] scale-105 shadow-md"
-                : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100 hover:scale-105"
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
+      <section className="py-16 bg-[#f9feff] px-6">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-3xl font-bold text-center text-[#006680] mb-8">
+            โปรโมชั่นที่กำลังลดราคา
+          </h2>
 
-      <section className="max-w-7xl mx-auto px-6 py-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
-        {filteredPackages.map((pkg, i) => (
-          <div
-            key={i}
-            className="group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transform hover:scale-105 transition-all duration-300"
-          >
-            <div className="relative overflow-hidden">
-              <img
-                src={pkg.img}
-                alt={pkg.title}
-                className="w-full h-56 object-cover transition-transform duration-500 group-hover:scale-110"
-              />
-              <div className="absolute inset-0 bg-[#0288a7]/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="w-10 h-10 border-4 border-[#006680] border-t-transparent rounded-full animate-spin"></div>
             </div>
-            <div className="p-6 text-center">
-              <h3 className="text-xl font-semibold text-[#006680] mb-3 transition-colors group-hover:text-[#0288a7]">
-                {pkg.title}
-              </h3>
-              <p className="text-gray-600 text-base leading-relaxed mb-4">
-                {pkg.desc}
-              </p>
-              <p className="text-[#0289a7] font-bold text-lg mb-3">
-                {pkg.price}
-              </p>
-              <button className="mt-2 bg-[#006680] hover:bg-[#0289a7] text-white px-6 py-2 rounded-full font-medium text-sm transition-all duration-300 shadow-md hover:shadow-xl transform hover:-translate-y-1 cursor-pointer">
-                <i class="fa-brands fa-readme"></i> อ่านเพิ่มเติม
-              </button>
-            </div>
-          </div>
-        ))}
-      </section>
-
-      <div className="bg-gray-50 py-16">
-        <div className="max-w-5xl mx-auto text-center px-6">
-          <h2 className="text-3xl font-bold mb-6">👨‍⚕️ แพทย์แนะนำ</h2>
-          <div className="bg-white p-8 rounded-2xl shadow-md inline-block hover:shadow-xl transition-transform transform hover:scale-105 duration-300">
-            <img
-              src="https://images.unsplash.com/photo-1607746882042-944635dfe10e?auto=format&fit=crop&w=400&q=60"
-              alt="Doctor"
-              className="w-28 h-28 rounded-full mx-auto mb-4 object-cover"
-            />
-            <h3 className="font-bold text-lg text-gray-800">
-              พญ. ศิริกาญจน์ ใจดี
-            </h3>
-            <p className="text-gray-600 mb-3">แพทย์เฉพาะทางอายุรกรรม</p>
-            <p className="text-gray-500 italic">
-              “แพ็กเกจตรวจสุขภาพนี้เหมาะกับผู้ที่ต้องการดูแลสุขภาพเชิงป้องกัน
-              และตรวจร่างกายประจำปีอย่างสม่ำเสมอ”
+          ) : promotions.length === 0 ? (
+            <p className="text-center text-gray-500 text-sm">
+              ยังไม่มีโปรโมชั่นลดราคาในขณะนี้
             </p>
-          </div>
-        </div>
-      </div>
+          ) : (
+            /* Grid: 5 columns on xl, responsive down to 1 */
+            <AnimateSection className="grid gap-8 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">
+              {promotions.map((p, idx) => {
+                const raw = p.price * (1 - p.discount / 100);
+                const rounded = roundByHalf(raw);
 
-      <div className="max-w-5xl mx-auto px-6 py-16">
-        <h2 className="text-3xl font-bold text-center mb-8">
-          ❓ คำถามที่พบบ่อย
-        </h2>
-        <div className="space-y-6">
-          {[
-            {
-              q: "ต้องงดอาหารก่อนตรวจไหม?",
-              a: "ขึ้นอยู่กับประเภทการตรวจ เช่น ตรวจเลือดควรงดอาหารอย่างน้อย 8 ชั่วโมงก่อนตรวจ",
-            },
-            {
-              q: "ใช้สิทธิ์ประกันสังคมได้หรือไม่?",
-              a: "สามารถใช้สิทธิ์บางส่วนได้ โดยขึ้นอยู่กับเงื่อนไขของแต่ละโปรแกรม",
-            },
-            {
-              q: "จองออนไลน์แล้วชำระเงินอย่างไร?",
-              a: "สามารถชำระผ่านบัตรเครดิต, QR Code หรือโอนผ่านบัญชีธนาคารได้",
-            },
-          ].map((faq, i) => (
-            <div
-              key={i}
-              className="bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1"
-            >
-              <h3 className="font-semibold text-gray-800 mb-2">{faq.q}</h3>
-              <p className="text-gray-600">{faq.a}</p>
-            </div>
-          ))}
+                return (
+                  <article
+                    key={p.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => showPromo(p)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") showPromo(p);
+                    }}
+                    className="bg-white rounded-3xl border border-[#dce7ea] shadow-md hover:shadow-2xl transform transition-all duration-200
+                      flex flex-col overflow-hidden cursor-pointer relative min-h-[300px] focus:outline-none focus:ring-4 focus:ring-[#0289a7]/30"
+                    style={{ animationDelay: `${idx * 40}ms` }}
+                  >
+                    {/* discount badge */}
+                    <div className="absolute top-3 left-3 z-20">
+                      <div className="bg-yellow-400 text-white text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-2 shadow-md">
+                        <FaFire size={12} />-{p.discount}%
+                      </div>
+                    </div>
+
+                    {/* image */}
+                    <div className="w-full h-44 sm:h-40 md:h-44 overflow-hidden bg-gray-100">
+                      <img
+                        src={p.image || placeholderImage}
+                        alt={p.name}
+                        onError={(e) => (e.target.src = placeholderImage)}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+
+                    {/* content */}
+                    <div className="p-5 flex flex-col flex-1">
+                      <h3 className="text-lg md:text-xl font-semibold text-[#006680] mb-2 text-center">
+                        {p.name}
+                      </h3>
+
+                      <p className="text-sm text-gray-600 mb-4 line-clamp-3 min-h-[54px] text-center">
+                        {p.description}
+                      </p>
+
+                      <div className="mb-4 w-full flex flex-col items-center">
+                        <div className="text-xs text-gray-500 mt-1 text-center mb-4">
+                          <span className="line-through text-red-500 mr-2">
+                            {p.price} บาท
+                          </span>
+                          <span className="text-green-600 font-medium">
+                            -{p.discount}%
+                          </span>
+                        </div>
+
+                        <div
+                          className="px-4 py-2 rounded-[14px]
+                          bg-[linear-gradient(135deg,#e0f7fa,#b2ebf2)]
+                          text-[#00556b] font-black text-base shadow-[0_6px_18px_rgba(0,150,180,0.12)]
+                          inline-block text-center"
+                        >
+                          ราคา: {rounded} บาท
+                        </div>
+                      </div>
+
+                      {/* push button to bottom so layout stable */}
+                      <div className="mt-auto flex justify-center">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            showPromo(p);
+                          }}
+                          className="bg-[#006680] hover:bg-[#0289a7] text-white px-4 py-2 rounded-full font-medium text-sm transition-shadow shadow-md cursor-pointer"
+                        >
+                          อ่านเพิ่มเติม
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </AnimateSection>
+          )}
         </div>
-      </div>
+      </section>
     </MainLayout>
   );
 }

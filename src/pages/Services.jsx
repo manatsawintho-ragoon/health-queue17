@@ -1,3 +1,4 @@
+// src/pages/Service.jsx
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
@@ -7,13 +8,13 @@ import { db } from "../firebaseConfig";
 import { collection, getDocs } from "firebase/firestore";
 import { FaFire } from "react-icons/fa";
 import Swal from "sweetalert2";
+import AnimateSection from "../components/AnimatedSection";
 
 export default function Service() {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // ดึงข้อมูลบริการทั้งหมดจาก Firestore
   useEffect(() => {
     const fetchServices = async () => {
       try {
@@ -28,7 +29,6 @@ export default function Service() {
           createdAt: doc.data().createdAt,
         }));
 
-        // เรียงให้บริการที่ recommend === true อยู่ก่อนเสมอ
         const sorted = list.sort((a, b) => {
           if (a.recommend === b.recommend) {
             return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
@@ -46,7 +46,6 @@ export default function Service() {
     fetchServices();
   }, []);
 
-  // ฟังก์ชันแสดง popup รายละเอียดบริการ
   const showDetail = (s) => {
     const user = JSON.parse(localStorage.getItem("user"));
     Swal.fire({
@@ -54,11 +53,20 @@ export default function Service() {
       html: `
         <img src="${s.image || placeholderImage}" alt="${
         s.title
-      }" style="width:100%; border-radius:12px; margin-bottom:12px;"/>
+      }" style="width:100%; border-radius:12px; margin-bottom:12px; object-fit:cover; max-height:360px;"/>
         <p style="color:#333; text-align:left; font-size:15px;">${
           s.description || "ไม่มีรายละเอียด"
         }</p>
-        <p style="margin-top:12px; color:#006680; font-weight:600;">ราคา: ${
+        <p style="margin-top: 8px;
+        padding: 10px 16px;
+        background: linear-gradient(135deg, #e0f7fa, #b2ebf2);
+        color: #00556b;
+        font-weight: 900;
+        font-size: 22px;
+        border-radius: 14px;
+        text-align: center;
+        letter-spacing: -0.5px;
+        box-shadow: 0 4px 10px rgba(0,150,180,0.15);">ราคา: ${
           s.price || "-"
         } บาท</p>
       `,
@@ -74,27 +82,31 @@ export default function Service() {
             title: "กรุณาเข้าสู่ระบบก่อนทำการจอง",
             confirmButtonText: "เข้าสู่ระบบ",
             confirmButtonColor: "#006680",
-          }).then(() => {
-            navigate("/login");
-          });
+          }).then(() => navigate("/login"));
           return false;
         } else {
-          Swal.fire({
-            icon: "success",
-            title: "กำลังไปยังหน้าจองคิว...",
-            confirmButtonColor: "#006680",
-            timer: 1500,
-            showConfirmButton: false,
-          });
-          navigate("/booking");
+          navigate("/booking", { state: { serviceId: s.id } });
         }
       },
     });
   };
 
+  const directBook = (s) => {
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user) {
+      Swal.fire({
+        icon: "info",
+        title: "กรุณาเข้าสู่ระบบก่อนทำการจอง",
+        confirmButtonText: "เข้าสู่ระบบ",
+        confirmButtonColor: "#006680",
+      }).then(() => navigate("/login"));
+      return;
+    }
+    navigate("/booking", { state: { serviceId: s.id } });
+  };
+
   return (
     <MainLayout>
-      {/* Hero Section */}
       <section className="relative bg-[#e6f3f5]">
         <img
           src={heroImg}
@@ -111,7 +123,6 @@ export default function Service() {
         </div>
       </section>
 
-      {/* All Services */}
       <section className="py-16 bg-[#f9feff] px-6">
         <h2 className="text-3xl font-bold text-center text-[#006680] mb-10">
           บริการของเรา
@@ -126,13 +137,22 @@ export default function Service() {
             ยังไม่มีบริการในระบบ
           </p>
         ) : (
-          <div className="grid gap-10 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 max-w-7xl mx-auto">
-            {services.map((s) => (
-              <div
+          <AnimateSection className="grid gap-10 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 max-w-7xl mx-auto">
+            {services.map((s, idx) => (
+              <article
                 key={s.id}
-                className="relative bg-white rounded-3xl border border-[#dce7ea] shadow-md hover:shadow-2xl hover:scale-[1.03] transition-all transform flex flex-col overflow-hidden"
+                role="button"
+                tabIndex={0}
+                onClick={() => showDetail(s)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") showDetail(s);
+                }}
+                className="relative bg-white rounded-3xl border border-[#dce7ea]
+                  shadow-md hover:shadow-2xl transition-all transform
+                  flex flex-col overflow-hidden animate-fadeIn cursor-pointer
+                  focus:outline-none focus:ring-4 focus:ring-[#0289a7]/20"
+                style={{ animationDelay: `${idx * 80}ms`, minHeight: 380 }}
               >
-                {/* ป้าย Hot */}
                 {s.recommend && (
                   <div className="absolute top-3 left-3 bg-red-500 text-white text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1 shadow-md z-10">
                     <FaFire size={12} />
@@ -140,36 +160,55 @@ export default function Service() {
                   </div>
                 )}
 
-                {/* รูปบริการ */}
-                <img
-                  src={s.image || placeholderImage}
-                  onError={(e) => (e.target.src = placeholderImage)}
-                  alt={s.title}
-                  className="h-56 w-full object-cover"
-                />
+                <div className="w-full h-56 overflow-hidden bg-gray-100">
+                  <img
+                    src={s.image || placeholderImage}
+                    onError={(e) => (e.target.src = placeholderImage)}
+                    alt={s.title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
 
-                {/* ข้อมูลบริการ */}
-                <div className="p-6 flex flex-col justify-between text-center flex-1">
+                {/* content */}
+                <div className="p-6 flex flex-col flex-1 text-center">
                   <h3 className="text-xl font-semibold text-[#006680] mb-2">
                     {s.title}
                   </h3>
-                  <p className="text-sm text-gray-600 mb-3">
-                    {s.description?.slice(0, 80)}...
-                  </p>
-                  <p className="text-[#006680] font-semibold mb-4">
-                    ราคา: {s.price} บาท
+
+                  {/* description: fixed min height so height predictable */}
+                  <p className="text-sm text-gray-600 mb-3 line-clamp-3 break-words min-h-[60px]">
+                    {s.description?.slice(0, 120) || "ไม่มีรายละเอียด"}
                   </p>
 
-                  <button
-                    onClick={() => showDetail(s)}
-                    className="bg-[#006680] hover:bg-[#0289a7] text-white px-6 py-2 rounded-full font-medium text-sm transition cursor-pointer"
-                  >
-                    จองคิวบริการนี้
-                  </button>
+                  {/* price: centered and stable */}
+                  <div className="mt-1 mb-3 flex justify-center items-center">
+                    <div
+                      className="inline-block px-6 py-2 rounded-[14px] tracking-[-0.5px]
+                        text-[#00556b] font-black text-[15px]
+                        bg-[linear-gradient(135deg,#e0f7fa,#b2ebf2)]
+                        shadow-[0_4px_10px_rgba(0,150,180,0.15)]
+                        text-center min-w-[140px]"
+                    >
+                      ราคา: {s.price ?? "-"} บาท
+                    </div>
+                  </div>
+
+                  {/* push button to bottom so price never overlaps */}
+                  <div className="mt-auto flex justify-center gap-3">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        showDetail(s);
+                      }}
+                      className="bg-[#006680] hover:bg-[#0289a7] text-white px-4 py-2 rounded-full font-medium text-sm transition cursor-pointer"
+                    >
+                      อ่านเพิ่มเติมบริการนี้
+                    </button>
+                  </div>
                 </div>
-              </div>
+              </article>
             ))}
-          </div>
+          </AnimateSection>
         )}
       </section>
     </MainLayout>

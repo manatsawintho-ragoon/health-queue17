@@ -18,10 +18,10 @@ import DevManager from "./pages/DevManager.jsx";
 import AdminDashboard from "./pages/AdminDashboard.jsx";
 import Booking from "./pages/Booking.jsx";
 import Appointment from "./pages/Appointments.jsx";
+import DoctorPanel from "./pages/DoctorPanel.jsx"
 
 // scrollToTop 
 import ScrollToTop from "./components/ScrollTotop.jsx";
-// -----------
 
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>
@@ -52,6 +52,9 @@ createRoot(document.getElementById("root")).render(
 
         {/* appointments */}
         <Route path="/appointments" element={<Appointment />} />
+
+        {/* DoctorPanel */}
+        <Route path="/doctorpanel" element={<DoctorPanel />} />
 
 
 

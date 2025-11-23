@@ -1,3 +1,4 @@
+// src/pages/Booking.jsx
 import React, { useEffect, useState, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
@@ -26,7 +27,7 @@ registerLocale("th", th);
 export default function Booking() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { serviceId } = location.state || {};
+  const { serviceId, promoId, promoMode } = location.state || {};
   const modalRef = useRef(null);
 
   const [service, setService] = useState(null);
@@ -48,12 +49,15 @@ export default function Booking() {
   const [countdown, setCountdown] = useState(600);
   const [loading, setLoading] = useState(true);
 
+  // NEW: doctors list + selection
+  const [doctors, setDoctors] = useState([]); // [{id, name, department, photoUrl}]
+  const [selectedDoctor, setSelectedDoctor] = useState(null); // object or null
+
   // --- helper: today's / week range for datepicker ---
   const today = new Date();
   const weekMaxDate = new Date();
-  weekMaxDate.setDate(today.getDate() + 6); // allow booking up to 6 days ahead (week)
+  weekMaxDate.setDate(today.getDate() + 6);
 
-  // ฟังก์ชันช่วยแปลงวันที่แบบ Local (แก้ปัญหา timezone ไทย)
   const toLocalDateString = (date) => {
     if (!date) return "";
     const d = new Date(date);
@@ -63,7 +67,6 @@ export default function Booking() {
     return `${year}-${month}-${day}`;
   };
 
-  // --- click outside to close modal ---
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (modalRef.current && !modalRef.current.contains(event.target)) {
@@ -74,7 +77,6 @@ export default function Booking() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showModal]);
 
-  // ฟังก์ชันแปลงวันที่เป็น พ.ศ. ไทย (ใช้กับ form.date ที่เป็น ISO string)
   const formatThaiDate = (isoDate) => {
     if (!isoDate) return "-";
     const date = new Date(isoDate);
@@ -98,7 +100,6 @@ export default function Booking() {
     return `${day} ${month} ${year}`;
   };
 
-  // สร้างช่วงเวลา (ทุก 1 ชั่วโมง) ข้ามพักเที่ยง
   const generateTimeSlots = (day) => {
     let slots = [];
     let startHour, endHour;
@@ -110,21 +111,63 @@ export default function Booking() {
       endHour = 20;
     }
     for (let h = startHour; h < endHour; h++) {
-      if (h === 12) continue; // ข้ามพักเที่ยง
+      if (h === 12) continue;
       slots.push(`${h.toString().padStart(2, "0")}:00`);
     }
     return slots;
   };
 
-  // โหลดข้อมูล service + user (จาก localStorage)
+  // load service/promo and user
   useEffect(() => {
     const init = async () => {
       try {
-        if (serviceId) {
+        // support promoMode/promoId as requested earlier
+        if (promoMode && promoId) {
+          const pRef = doc(db, "promotions", promoId);
+          const pSnap = await getDoc(pRef);
+          if (pSnap.exists()) {
+            const pdata = pSnap.data();
+            const origPrice = Number(pdata.price) || 0;
+            const discount = Number(pdata.discount) || 0;
+            const raw = origPrice * (1 - discount / 100);
+            const finalPrice = Math.floor(
+              raw - Math.floor(raw) < 0.5 ? raw : Math.ceil(raw)
+            ); // keep existing behavior if any
+            setService({
+              id: pSnap.id,
+              name: pdata.name || pdata.title || "โปรโมชั่น",
+              description: pdata.description || pdata.detail || "",
+              image:
+                pdata.image || pdata.imageUrl || "/mnt/data/WHOCARE-logo.png",
+              price: finalPrice,
+              originalPrice: origPrice,
+              discount: discount,
+              isPromo: true,
+            });
+          } else {
+            setService(null);
+          }
+        } else if (serviceId) {
           const sRef = doc(db, "services", serviceId);
           const sSnap = await getDoc(sRef);
-          if (sSnap.exists()) setService({ id: sSnap.id, ...sSnap.data() });
+          if (sSnap.exists()) {
+            const sdata = sSnap.data();
+            setService({
+              id: sSnap.id,
+              name: sdata.name || sdata.title || "บริการ",
+              description: sdata.description || sdata.detail || "",
+              image:
+                sdata.image || sdata.imageUrl || "/mnt/data/WHOCARE-logo.png",
+              price: Number(sdata.price) || 0,
+              isPromo: false,
+            });
+          } else {
+            setService(null);
+          }
+        } else {
+          setService(null);
         }
+
         const localUser = JSON.parse(localStorage.getItem("user"));
         if (localUser) {
           setUser(localUser);
@@ -137,9 +180,37 @@ export default function Booking() {
       }
     };
     init();
-  }, [serviceId]);
+  }, [serviceId, promoId, promoMode]);
 
-  // --- Real-time listeners for appointments + pendingBookings for selectedDate ---
+  // NEW: load doctors from users collection (role === "หมอ")
+  useEffect(() => {
+    const loadDoctors = async () => {
+      try {
+        const snap = await getDocs(collection(db, "users"));
+        const arr = snap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter((u) => u.role === "หมอ")
+          .map((u) => {
+            const name = `${u.prefix || ""} ${
+              u.fullName || u.displayName || ""
+            }`.trim();
+            return {
+              id: u.id,
+              name: name || u.fullName || u.displayName || "ไม่ระบุ",
+              department: u.department || "",
+              photoUrl: u.photoUrl || u.photoURL || "",
+              raw: u,
+            };
+          });
+        setDoctors(arr);
+      } catch (e) {
+        console.error("loadDoctors:", e);
+        setDoctors([]);
+      }
+    };
+    loadDoctors();
+  }, []);
+
   useEffect(() => {
     if (!selectedDate) return;
 
@@ -160,15 +231,11 @@ export default function Booking() {
     let unsubApp = () => {};
     let unsubPending = () => {};
 
-    // appointments listener
     unsubApp = onSnapshot(
       qApp,
       (snap) => {
-        // console.log(" [onSnapshot] appointments triggered for date:", dateStr);
-        // map to array of { time, datetime }
         const arr = snap.docs.map((d) => {
           const data = d.data();
-          // console.log(" appointment doc:", data);
           const [hh, mm] = (data.time || "00:00").split(":").map(Number);
           const parts = (data.date || dateStr).split("-");
           const dt = new Date(
@@ -183,15 +250,14 @@ export default function Booking() {
             date: data.date || dateStr,
             time: data.time || "",
             datetime: dt,
+            doctorId: data.doctorId || null,
           };
         });
-        // console.log(" bookedTimes array now:", arr);
         setBookedTimes(arr);
       },
       (err) => console.error("appointments onSnapshot error:", err)
     );
 
-    // pending listener
     unsubPending = onSnapshot(
       qPending,
       (snap) => {
@@ -208,17 +274,16 @@ export default function Booking() {
             time: p.time,
             expiresAt: p.expiresAt,
             email: p.email,
+            doctorId: p.doctorId || null,
           }));
         setPendingTimes(arr);
 
-        // if there's a pending for current user (match by email + serviceId), set pendingDocId and countdown
         if (form.email) {
           const myPending = arr.find(
             (p) => p.email === form.email && p.serviceId === service?.id
           );
           if (myPending) {
             setPendingDocId(myPending.id);
-            // compute remaining seconds
             const ex = new Date(myPending.expiresAt);
             const seconds = Math.max(
               0,
@@ -226,12 +291,7 @@ export default function Booking() {
             );
             setCountdown(seconds > 0 ? seconds : 0);
           } else {
-            // If no pending for me, clear pendingDocId
-            setPendingDocId((prev) => {
-              if (!prev) return null;
-              // if prev existed but no longer present, clear
-              return null;
-            });
+            setPendingDocId(null);
           }
         }
       },
@@ -244,10 +304,8 @@ export default function Booking() {
         unsubPending();
       } catch (e) {}
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate, form.email, service]);
 
-  // countdown for pending (10 min) — start only when pendingDocId exists
   useEffect(() => {
     if (!pendingDocId) return;
     if (countdown <= 0) {
@@ -281,50 +339,31 @@ export default function Booking() {
     return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
-  //  time slot เป็นอดีต (today) หรือผ่านแล้วมากกว่า 30 นาที (เพื่อเปลี่ยนเป็นเทา)
   const isPastTime = (slotTime) => {
     if (!selectedDate) return false;
     const now = new Date();
     const selected = new Date(selectedDate);
-    // same day?
     if (
       now.getFullYear() === selected.getFullYear() &&
       now.getMonth() === selected.getMonth() &&
       now.getDate() === selected.getDate()
     ) {
       const [hour] = slotTime.split(":").map(Number);
-      // if the slot's starting hour + 0 min is <= current hour → treat as past
       if (hour < now.getHours()) return true;
-
-      // ให้เวลาปัจจุบันจองได้จนกว่าจะเลย 30 นาที
       if (hour === now.getHours() && now.getMinutes() >= 30) return true;
     }
-    // if selectedDate is in the past day (shouldn't be selectable due to minDate) treat as past
     if (selected < new Date(today.toDateString())) return true;
     return false;
   };
 
-  // helper: check if a booked slot should be shown as expired (>= 30 minutes past its start)
   const isBookedExpired = (bookedEntry) => {
     if (!bookedEntry) return false;
-
     try {
-      // สร้างวันที่ปัจจุบัน (ไม่มี timezone offset)
       const now = new Date();
       const todayStr = now.toISOString().split("T")[0];
-
-      // ถ้าไม่ใช่วันเดียวกันเลย ให้ถือว่ายังไม่หมดอายุ
       if (bookedEntry.date !== todayStr) return false;
-
-      // แปลงเวลาที่จองเป็นชั่วโมง
       const [h, m] = (bookedEntry.time || "00:00").split(":").map(Number);
-
-      // เวลาปัจจุบันในชั่วโมงและนาที
-      const nowH = now.getHours();
-      const nowM = now.getMinutes();
-
-      // ถ้าผ่านเวลานัดไปเกิน 60 นาที → ถือว่าหมดอายุ
-      const diffMinutes = nowH * 60 + nowM - (h * 60 + m);
+      const diffMinutes = now.getHours() * 60 + now.getMinutes() - (h * 60 + m);
       return diffMinutes >= 60;
     } catch (e) {
       console.error("isBookedExpired error:", e);
@@ -332,7 +371,13 @@ export default function Booking() {
     }
   };
 
-  // Create pending booking (lock) — improved: delete user's previous pending first
+  // helper to randomly pick a doctor if user didn't choose
+  const pickRandomDoctor = () => {
+    if (!doctors || doctors.length === 0) return null;
+    const idx = Math.floor(Math.random() * doctors.length);
+    return doctors[idx];
+  };
+
   const createPendingBooking = async () => {
     if (!selectedDate || !selectedTime) {
       Swal.fire("กรุณาเลือกวันและเวลา", "", "warning");
@@ -342,11 +387,15 @@ export default function Booking() {
       Swal.fire("กรุณากรอกอีเมลและเบอร์โทรศัพท์ก่อน", "", "warning");
       return;
     }
+    if (!service) {
+      Swal.fire("ไม่พบข้อมูลบริการที่เลือก", "", "warning");
+      return;
+    }
 
     const dateStr = toLocalDateString(selectedDate);
 
     try {
-      // 1. ลบ pending เดิมของ user (ถ้ามี) ก่อนสร้างใหม่ (ป้องกันล็อกซ้อน)
+      // remove old pendings by same email
       const qUserPending = query(
         collection(db, "pendingBookings"),
         where("email", "==", form.email)
@@ -360,7 +409,7 @@ export default function Booking() {
         }
       }
 
-      // 2. ตรวจสอบ appointments ว่ายังว่าง
+      // check appointments
       const qApp = query(
         collection(db, "appointments"),
         where("date", "==", dateStr),
@@ -369,11 +418,11 @@ export default function Booking() {
       const appSnap = await getDocs(qApp);
       if (!appSnap.empty) {
         Swal.fire("ขออภัย", "เวลานี้ถูกจองไปแล้ว", "warning");
-        await fetchRefresh(); // refresh local view
+        await fetchRefresh();
         return;
       }
 
-      // 3. ตรวจ pending ที่ยังไม่หมดเวลา (คนอื่นล็อก)
+      // check pending locks
       const qPending = query(
         collection(db, "pendingBookings"),
         where("date", "==", dateStr),
@@ -394,10 +443,12 @@ export default function Booking() {
         return;
       }
 
-      // 4. สร้าง pending ใหม่
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+      // CHOOSE doctor: prefer selectedDoctor, else pick random
+      const chosenDoctor = selectedDoctor ? selectedDoctor : pickRandomDoctor();
+
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
       const pendingRef = await addDoc(collection(db, "pendingBookings"), {
-        userName: `${user?.prefix || ""} ${user?.fullName || ""}`,
+        userName: `${user?.prefix || ""} ${user?.fullName || ""}`.trim(),
         email: form.email,
         phone: form.phone,
         serviceId: service.id,
@@ -405,26 +456,23 @@ export default function Booking() {
         date: dateStr,
         time: selectedTime,
         expiresAt: expiresAt.toISOString(),
+        // NEW: attach doctor info (may be null)
+        doctorId: chosenDoctor?.id || null,
+        doctorName: chosenDoctor?.name || null,
       });
 
       setPendingDocId(pendingRef.id);
       setForm((prev) => ({ ...prev, date: dateStr, time: selectedTime }));
       resetCountdown();
       setShowModal(false);
-      // fetchRefresh will be triggered by onSnapshot listener automatically (real-time)
     } catch (err) {
       console.error("createPendingBooking:", err);
       Swal.fire("เกิดข้อผิดพลาด", String(err), "error");
     }
   };
 
-  // helper: refresh by refetching selectedDate snapshots (we already have onSnapshot; this triggers no-op)
   const fetchRefresh = async () => {
-    // no-op because onSnapshot updates automatically; kept for compatibility
-    if (selectedDate) {
-      // trigger a slight state change to cause effect? but onSnapshot already running.
-      setTimeSlots((t) => [...t]);
-    }
+    if (selectedDate) setTimeSlots((t) => [...t]);
   };
 
   const deletePendingBooking = async () => {
@@ -438,7 +486,6 @@ export default function Booking() {
     }
   };
 
-  // ส่งอีเมลยืนยันการจองผ่าน EmailJS
   const sendConfirmationEmail = async (bookingData) => {
     try {
       const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
@@ -450,7 +497,6 @@ export default function Booking() {
         return;
       }
 
-      // template variables ต้องตรงกับตัวแปรที่คุณใช้ใน EmailJS template
       const templateParams = {
         userName: bookingData.userName,
         serviceName: bookingData.serviceName,
@@ -458,17 +504,15 @@ export default function Booking() {
         time: bookingData.time,
         price: bookingData.price,
         email: bookingData.email,
+        doctorName: bookingData.doctorName || "-",
       };
-      // console.log(" DEBUG templateParams =", templateParams);
       await emailjs.send(serviceId, templateId, templateParams, publicKey);
       console.log(" Confirmation email sent to", bookingData.email);
     } catch (err) {
       console.error(" Failed to send confirmation email:", err);
-      // ไม่บล็อกการทำงานหลัก — ถ้าส่งไม่สำเร็จ ให้ระบบยังทำงานต่อ
     }
   };
 
-  //  ฟังก์ชันยืนยันการจอง
   const handleConfirmBooking = async () => {
     if (!form.date || !form.time || !form.phone) {
       Swal.fire("กรุณากรอกข้อมูลให้ครบก่อน", "", "warning");
@@ -476,13 +520,11 @@ export default function Booking() {
     }
 
     try {
-      //  บังคับให้ date เป็น string เสมอ เพื่อให้ Firestore query match ได้ถูกต้อง
       const dateStr =
         typeof form.date === "string"
           ? form.date
-          : form.date.toLocalDateString(selectedDate);
+          : toLocalDateString(selectedDate);
 
-      // ตรวจสอบว่ามีการจองเวลาเดียวกันในวันนั้นหรือยัง
       const qApp = query(
         collection(db, "appointments"),
         where("date", "==", dateStr),
@@ -495,42 +537,50 @@ export default function Booking() {
         return;
       }
 
-      //  เพิ่มบันทึกการจองใหม่ใน appointments โดยใช้ dateStr แบบ string ชัดเจน
+      // CHOOSE doctor again: prefer selectedDoctor, else pick random
+      const chosenDoctor = selectedDoctor ? selectedDoctor : pickRandomDoctor();
+
+      const finalPrice = Number(service.price) || 0;
       await addDoc(collection(db, "appointments"), {
-        userName: `${user?.prefix || ""} ${user?.fullName || ""}`,
+        userName: `${user?.prefix || ""} ${user?.fullName || ""}`.trim(),
         email: form.email,
         phone: form.phone,
         serviceId: service.id,
         serviceName: service.name,
         description: service.description || "",
         image: service.image || "",
-        price: service.price || 0,
-        date: dateStr, //  ใช้ string format YYYY-MM-DD
+        price: finalPrice,
+        originalPrice: service.originalPrice || null,
+        discount: service.discount || null,
+        date: dateStr,
         time: form.time,
-        deposit: service.price / 2,
+        deposit: Math.round(finalPrice * 0.2),
         createdAt: new Date(),
+        // NEW: store doctor info
+        doctorId: chosenDoctor?.id || null,
+        doctorName: chosenDoctor?.name || null,
       });
 
-      // ส่งอีเมลยืนยัน (ไม่ block ถ้าส่งล้มเหลว)
       sendConfirmationEmail({
-        userName: `${user?.prefix || ""} ${user?.fullName || ""}`,
+        userName: `${user?.prefix || ""} ${user?.fullName || ""}`.trim(),
         serviceName: service.name,
         date: dateStr,
         time: form.time,
-        price: service.price || 0,
+        price: finalPrice,
         email: form.email,
+        doctorName: chosenDoctor?.name || null,
       });
 
-      // ลบ pending หลังจองสำเร็จ
       await deletePendingBooking();
 
-      // แสดง popup สำเร็จ
       Swal.fire({
         icon: "success",
         title: "จองคิวสำเร็จ!",
         html: `คุณได้จอง <b>${service.name}</b><br/>วันที่ ${formatThaiDate(
           dateStr
-        )} เวลา ${form.time} น.`,
+        )} เวลา ${form.time} น.${
+          chosenDoctor?.name ? `<br/>แพทย์: <b>${chosenDoctor.name}</b>` : ""
+        }`,
         confirmButtonColor: "#006680",
       }).then(() => navigate("/appointments"));
     } catch (err) {
@@ -539,7 +589,6 @@ export default function Booking() {
     }
   };
 
-  // cancel action — delete pending and go home
   const handleCancel = async () => {
     try {
       if (pendingDocId) await deletePendingBooking();
@@ -550,7 +599,6 @@ export default function Booking() {
     }
   };
 
-  // simple input change
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -558,18 +606,17 @@ export default function Booking() {
     return (
       <MainLayout>
         <div className="flex justify-center items-center h-screen text-gray-600 text-lg">
-          กำลังโหลดข้อมูล...
+          {" "}
+          กำลังโหลดข้อมูล...{" "}
         </div>
       </MainLayout>
     );
 
-  // --- render ---
   return (
     <MainLayout>
       <div className="min-h-screen bg-[#f4fbfc] flex justify-center py-20">
         {service ? (
           <div className="flex bg-white shadow-xl rounded-3xl overflow-hidden w-[1100px] h-[600px] border border-gray-300">
-            {/* Left: service */}
             <div className="w-[30%] bg-[#eaf7fa] p-5 flex flex-col items-center justify-center border-r border-gray-200">
               <img
                 src={service.image}
@@ -587,7 +634,6 @@ export default function Booking() {
               </p>
             </div>
 
-            {/* Middle: user + form */}
             <div className="w-[40%] p-6 border-r border-gray-200 flex flex-col justify-between">
               <div>
                 <h3 className="text-lg font-semibold text-[#006680] mb-3 text-center">
@@ -598,7 +644,9 @@ export default function Booking() {
                     <label className="text-sm text-gray-700">ชื่อผู้ใช้</label>
                     <input
                       type="text"
-                      value={user?.prefix + " " + user?.fullName || ""}
+                      value={`${user?.prefix || ""} ${
+                        user?.fullName || ""
+                      }`.trim()}
                       readOnly
                       className="border border-gray-300 rounded-lg p-2 w-full bg-gray-100 text-sm"
                     />
@@ -630,6 +678,35 @@ export default function Booking() {
                     />
                   </div>
 
+                  {/* NEW: doctor select */}
+                  <div>
+                    <label className="text-sm text-gray-700">
+                      เลือกแพทย์
+                    </label>
+                    <select
+                      value={selectedDoctor?.id || ""}
+                      onChange={(e) => {
+                        const id = e.target.value || null;
+                        if (!id) setSelectedDoctor(null);
+                        else {
+                          const docObj =
+                            doctors.find((d) => d.id === id) || null;
+                          setSelectedDoctor(docObj);
+                        }
+                      }}
+                      className="border border-gray-300 rounded-lg p-2 w-full text-sm"
+                    >
+                      <option value="">
+                        ไม่ระบุ ( ให้คลินิกจัดการ )
+                      </option>
+                      {doctors.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
                   <div className="mt-3">
                     <label className="text-sm text-gray-700">
                       วันเวลาในการจอง
@@ -639,7 +716,11 @@ export default function Booking() {
                       className="cursor-pointer border border-[#006680] text-[#006680] w-full py-2 rounded-lg hover:bg-[#006680] hover:text-white transition text-sm font-semibold"
                     >
                       {form.date
-                        ? `${formatThaiDate(form.date)} เวลา ${form.time} น.`
+                        ? `${formatThaiDate(form.date)} เวลา ${form.time} น.${
+                            selectedDoctor?.name
+                              ? ` — แพทย์: ${selectedDoctor.name}`
+                              : ""
+                          }`
                         : "เลือกวันและเวลา"}
                     </button>
                   </div>
@@ -672,7 +753,6 @@ export default function Booking() {
                   </div>
                 </div>
 
-                {/* คำอธิบายใต้ปุ่มยืนยัน */}
                 <div className="text-xs text-gray-600">
                   <p>
                     ต้องกรอกข้อมูลให้ครบ และเลือกวัน-เวลาพร้อมชำระเงิน
@@ -682,14 +762,13 @@ export default function Booking() {
               </div>
             </div>
 
-            {/* Right: deposit */}
             <div className="w-[30%] bg-[#f0fafb] flex flex-col justify-start items-center p-5 text-center">
               <h3 className="text-lg font-semibold text-[#006680] mb-2">
                 มัดจำการจอง
               </h3>
               <p className="text-gray-600 text-sm mb-1">จำนวนที่ต้องชำระ</p>
               <p className="text-2xl font-bold text-[#0289a7] mb-2">
-                {service.price / 2} บาท
+                {Math.round((service.price || 0) * 0.2)} บาท
               </p>
               <p className="text-gray-600 text-sm mb-1">
                 เวลาที่เหลือในการชำระ
@@ -699,11 +778,7 @@ export default function Booking() {
               </p>
               <p className="text-red-500 font-semibold mb-3 text-xs">
                 หมายเหตุ: เมื่อเลือกวันเวลาแล้ว กรุณาชำระมัดจำผ่าน PromptPay
-                ด้านล่าง ภายในเวลาที่กำหนด และกดปุ่ม{" "}
-                <span className="text-amber-700 font-bold text-xs">
-                  {" "}
-                  <b>"ยืนยันการจอง" </b>
-                </span>
+                ด้านล่าง ภายในเวลาที่กำหนด และกดปุ่ม <b>"ยืนยันการจอง"</b>
               </p>
               <img
                 src={qrWhocare}
@@ -711,7 +786,6 @@ export default function Booking() {
                 className="w-32 h-32 object-contain mb-3 border border-gray-300 rounded-lg"
               />
               <p className="text-gray-600 text-xs mb-3">สแกนเพื่อชำระมัดจำ</p>
-
               <div className="bg-white border border-[#0289a7]/30 rounded-xl p-3 text-xs leading-relaxed text-gray-700 shadow-sm max-w-[96%]">
                 <p>
                   หลังจากชำระเงินแล้ว โปรดกดปุ่ม <b>“ยืนยันการจอง”</b>{" "}
@@ -730,14 +804,12 @@ export default function Booking() {
         )}
       </div>
 
-      {/* Modal: date & time */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
           <div
             ref={modalRef}
             className="bg-white rounded-3xl shadow-2xl w-[820px] h-[520px] flex border border-[#006680]/20 animate-fadeIn overflow-hidden"
           >
-            {/* Left: date */}
             <div className="w-[45%] bg-[#f7fbfc] border-r border-[#dce7ea] p-5 flex flex-col items-center">
               <h2 className="text-[#006680] font-bold text-lg mb-3">
                 เลือกวันที่ต้องการจอง
@@ -748,10 +820,8 @@ export default function Booking() {
                   เวลาทำการคลินิก
                 </p>
                 <p className="text-xs text-gray-600 mt-1 text-center leading-relaxed">
-                  จันทร์–ศุกร์: 10:00 – 20:00 น.
-                  <br />
-                  เสาร์–อาทิตย์: 11:00 – 20:00 น.
-                  <br />
+                  จันทร์–ศุกร์: 10:00 – 20:00 น. <br />
+                  เสาร์–อาทิตย์: 11:00 – 20:00 น. <br />
                   พักกลางวัน: 12:00 – 12:30 น.
                 </p>
               </div>
@@ -774,13 +844,11 @@ export default function Booking() {
               />
             </div>
 
-            {/* Right: times */}
             <div className="w-[55%] flex flex-col justify-between p-5">
               <div>
                 <h2 className="text-[#006680] font-bold text-lg text-center mb-2">
                   เลือกเวลาที่ต้องการ
                 </h2>
-
                 {selectedDate ? (
                   <div className="grid grid-cols-3 gap-2 max-h-[360px] overflow-y-auto p-2">
                     {timeSlots.map((t) => {
@@ -798,12 +866,9 @@ export default function Booking() {
                       const pendingEntry = pendingTimes.find(
                         (p) => p.time === t
                       );
-                      const isPending = !!pendingEntry && !bookedEntry; // pending only if not booked
+                      const isPending = !!pendingEntry && !bookedEntry;
                       const past = isPastTime(t);
-
-                      // disabled: ถ้าเป็นเวลาผ่านไปแล้ว, จองแล้ว, ล็อกชั่วคราว หรือพักเที่ยง
                       const disabled = past || isBooked || isPending || isLunch;
-
                       const baseClass = `relative py-2 rounded-lg text-sm font-medium border transition ${
                         disabled
                           ? "bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed"
@@ -822,16 +887,16 @@ export default function Booking() {
                           className={baseClass}
                         >
                           {t}
-                          {/* แสดงป้ายเฉพาะกรณีจองแล้วแต่ยังไม่หมดเวลา 1 ชั่วโมง */}
                           {isBooked && !isBookedExpiredNow && (
                             <span className="absolute top-1 right-1 text-[10px] bg-red-500 text-white rounded px-1">
-                              ถูกจองแล้ว
+                              {" "}
+                              ถูกจองแล้ว{" "}
                             </span>
                           )}
-                          {/* แสดงป้ายล็อกชั่วคราว (pending) */}
                           {isPending && !isBooked && (
                             <span className="absolute top-1 right-1 text-[10px] bg-yellow-500 text-white rounded px-1">
-                              มีคนกำลังจอง
+                              {" "}
+                              มีคนกำลังจอง{" "}
                             </span>
                           )}
                         </button>
@@ -852,7 +917,6 @@ export default function Booking() {
                 >
                   ยกเลิก
                 </button>
-
                 <button
                   onClick={createPendingBooking}
                   className={`cursor-pointer bg-[#006680] hover:bg-[#0289a7] text-white px-8 py-2 rounded-full font-semibold transition ${

@@ -128,10 +128,10 @@ export default function Navbar() {
                   {/* ออกจากระบบ */}
                   <button
                     onClick={handleLogout}
-                    className="w-full text-left px-5 py-3 text-sm font-medium hover:bg-[#006680] hover:text-white transition-all cursor-pointer"
+                    className="w-full text-left px-5 py-3 text-sm font-medium hover:bg-amber-50 hover:text-white transition-all cursor-pointer"
                   >
-                    <i className="fa-solid fa-right-from-bracket mr-2"></i>
-                    ออกจากระบบ
+                    
+                    <span className="text-red-900"><i className="fa-solid fa-right-from-bracket mr-2"></i> ออกจากระบบ</span>
                   </button>
                 </div>
               )}

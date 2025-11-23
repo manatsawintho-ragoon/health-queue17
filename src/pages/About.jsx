@@ -1,36 +1,39 @@
 import React from "react";
 import MainLayout from "../layouts/MainLayout";
 import hospitalImg from "../assets/spu-building.jpg";
+import AnimateSection from "../components/AnimatedSection";
 
 export default function About() {
-
   return (
     <MainLayout>
-      {/* Hero Section */}
-      <section className="relative bg-[#e6f3f5]">
-        <img
-          src={hospitalImg}
-          alt="Hospital Building"
-          className="w-full h-[400px] object-cover opacity-70"
-        />
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-white bg-black/40">
-          <h1 className="text-4xl md:text-5xl font-bold mb-3 tracking-wide">
-            เกี่ยวกับเรา
-          </h1>
-          <p className="text-lg md:text-xl text-gray-200">
-            WHOCARE CLINIC – ผู้เชี่ยวชาญด้านการดูแลผิวและความงามครบวงจร
-          </p>
+      {/* Hero Section using AnimateSection */}
+      <AnimateSection className="relative bg-[#e6f3f5]">
+        <div className="relative w-full">
+          <img
+            src={hospitalImg}
+            alt="Hospital Building"
+            className="w-full h-[400px] object-cover opacity-70"
+          />
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-white bg-black/40">
+            <h1 className="text-4xl md:text-5xl font-bold mb-3 tracking-wide">
+              เกี่ยวกับเรา
+            </h1>
+            <p className="text-lg md:text-xl text-gray-200 text-center max-w-2xl px-4">
+              WHOCARE CLINIC – ผู้เชี่ยวชาญด้านการดูแลผิวและความงามครบวงจร
+            </p>
+          </div>
         </div>
-      </section>
+      </AnimateSection>
 
       {/* Introduction */}
-      <section className="max-w-5xl mx-auto px-6 py-16 text-center">
+      <AnimateSection className="max-w-5xl mx-auto px-6 py-16 text-center">
         <h2 className="text-3xl font-bold text-[#006680] mb-6">
           WHOCARE CLINIC คือใคร?
         </h2>
         <p className="text-gray-700 leading-relaxed text-lg mb-8">
           WHOCARE CLINIC ก่อตั้งขึ้นเพื่อมอบการดูแลผิวพรรณและความงามอย่างครบวงจร
-          ตั้งแต่การรักษาสิว การบำรุงผิวหน้า การทำเลเซอร์ ไปจนถึงการปรับรูปหน้าด้วยฟิลเลอร์และโบท็อกซ์
+          ตั้งแต่การรักษาสิว การบำรุงผิวหน้า การทำเลเซอร์
+          ไปจนถึงการปรับรูปหน้าด้วยฟิลเลอร์และโบท็อกซ์
           ด้วยทีมแพทย์ผู้เชี่ยวชาญเฉพาะทางที่พร้อมให้คำแนะนำและดูแลด้วยความใส่ใจ
           เพื่อให้ทุกคนได้สัมผัสความมั่นใจและความสวยในแบบของตัวเอง
         </p>
@@ -42,7 +45,8 @@ export default function About() {
             </h3>
             <p className="text-gray-600 text-base">
               เป็นคลินิกความงามที่ลูกค้ามั่นใจและไว้วางใจที่สุด
-              ด้วยมาตรฐานการรักษาที่ปลอดภัย เทคโนโลยีทันสมัย และผลลัพธ์ที่พิสูจน์ได้จริง
+              ด้วยมาตรฐานการรักษาที่ปลอดภัย เทคโนโลยีทันสมัย
+              และผลลัพธ์ที่พิสูจน์ได้จริง
             </p>
           </div>
 
@@ -56,10 +60,10 @@ export default function About() {
             </p>
           </div>
         </div>
-      </section>
+      </AnimateSection>
 
       {/* Core Values */}
-      <section className="bg-[#006680]/10 py-16">
+      <AnimateSection className="bg-[#006680]/10 py-16">
         <div className="max-w-6xl mx-auto px-6 text-center">
           <h2 className="text-3xl font-bold text-[#006680] mb-10">
             คุณค่าหลักของเรา (Our Core Values)
@@ -94,7 +98,7 @@ export default function About() {
             </div>
           </div>
         </div>
-      </section>
+      </AnimateSection>
     </MainLayout>
   );
 }
